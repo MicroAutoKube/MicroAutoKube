@@ -1,8 +1,13 @@
 import Image from "next/image";
+import { prisma } from "@/lib/prisma";
 
-export default function Home() {
+export default async function Home() {
+  const data = await prisma.user.findMany();
   return (
-    <div >
+    <div>
+      {data.map(user => (
+        <div key={user.id}>{user.name}</div>
+      ))}
     </div>
   );
 }
