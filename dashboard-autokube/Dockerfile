@@ -47,7 +47,6 @@ RUN chown nextjs:bun .next
 COPY --from=builder --chown=nextjs:bun /app/public ./public
 COPY --from=builder --chown=nextjs:bun /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:bun /app/.next/static ./.next/static
-COPY --from=builder --chown=nextjs:bun /app/prisma ./prisma  # Copy Prisma client
 
 # Switch to non-root user
 USER nextjs
