@@ -1,19 +1,9 @@
-import NextAuth, { NextAuthOptions, Session } from 'next-auth';
+import NextAuth from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import { PrismaAdapter } from '@auth/prisma-adapter';
-import { prisma, bcrypt } from '@/lib'; // Ensure the correct import path
+import { prisma, bcrypt } from '@/lib'; // Ensure correct import
 
-declare module 'next-auth' {
-    interface Session {
-        user: {
-            id: string;
-            name?: string | null;
-            email?: string | null;
-        };
-    }
-}
-
-export const authOptions: NextAuthOptions = {
+const handler = NextAuth({
     adapter: PrismaAdapter(prisma),
     providers: [
         CredentialsProvider({
@@ -68,10 +58,8 @@ export const authOptions: NextAuthOptions = {
         },
     },
     pages: {
-        signIn: '/login', // Redirect users to login page if not authenticated
+        signIn: '/', // Redirect users to login page if not authenticated
     },
-};
-
-const handler = NextAuth(authOptions);
+});
 
 export { handler as GET, handler as POST };
