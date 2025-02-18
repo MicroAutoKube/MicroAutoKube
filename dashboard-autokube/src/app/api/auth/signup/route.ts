@@ -17,7 +17,24 @@ interface SignupResponse {
 export async function POST(request: Request): Promise<Response> {
   try {
     const { email, password, name }: SignupRequest = await request.json();
-    const hashedPassword = bcrypt.hashSync(password, 10);
+
+    if (!email || !password || !name) {
+      const response: SignupResponse = { error: 'Missing fields' };
+      return Response.json(response);
+    }
+
+    const userExists = await prisma.user.findFirst({
+      where: {
+        email,
+      },
+    });
+
+    if (userExists) {
+      const response: SignupResponse = { error: 'User already exists' };
+      return Response.json(response);
+    }
+
+    const hashedPassword = bcrypt.hashSync(password, 12);
 
     const user = await prisma.user.create({
       data: {
@@ -26,7 +43,10 @@ export async function POST(request: Request): Promise<Response> {
         name,
       },
     });
-    const response: SignupResponse = { message: 'User created', user };
+
+    const { password: _, ...userWithoutPassword } = user;
+
+    const response: SignupResponse = { message: 'User created', user: userWithoutPassword };
     return Response.json(response);
   } catch (error) {
     const response: SignupResponse = { error: 'User could not be created' };
