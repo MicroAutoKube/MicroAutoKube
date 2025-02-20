@@ -66,7 +66,7 @@ const Login = () => {
       <ToastContainer position="top-right" autoClose={3000} />
 
       <div className="border-2 border-[#696796] rounded-md shadow-md p-12 flex flex-col items-center gap-4 bg-gray-900">
-        <Image src="/logo-text.svg" alt="logo" width={300} height={80} />
+        <Image src="/logo/logo-text.svg" alt="logo" width={300} height={80} />
         <h1 className="text-3xl font-semibold text-white">Login</h1>
 
         <form className="flex flex-col gap-4 w-96" onSubmit={handleSubmit}>
@@ -82,7 +82,7 @@ const Login = () => {
                 required
                 className="bg-[#0A51A5] text-white placeholder:text-gray-300 pl-10 py-2 w-full rounded-md"
                 style={{
-                  backgroundImage: 'url("/user.svg")',
+                  backgroundImage: 'url("/icons/user.svg")',
                   backgroundRepeat: "no-repeat",
                   backgroundSize: "20px",
                   backgroundPosition: "10px center",
@@ -101,7 +101,7 @@ const Login = () => {
                 required
                 className="bg-[#0A51A5] text-white placeholder:text-gray-300 pl-10 py-2 w-full rounded-md"
                 style={{
-                  backgroundImage: 'url("/lock.svg")',
+                  backgroundImage: 'url("/icons/lock.svg")',
                   backgroundRepeat: "no-repeat",
                   backgroundSize: "20px",
                   backgroundPosition: "10px center",

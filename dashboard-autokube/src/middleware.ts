@@ -8,10 +8,17 @@ export async function middleware(req: NextRequest) {
   const protectedPaths = ['/dashboard', '/settings', '/profile'];
 
   const isProtectedRoute = protectedPaths.some(path => req.nextUrl.pathname.startsWith(path));
-
+  
   if (isProtectedRoute && !token) {
     return NextResponse.redirect(new URL('/', req.url));
   }
+
+  if (req.nextUrl.pathname === '/' && token) {
+    return NextResponse.redirect(new URL('/dashboard', req.url));
+  }
+
+
+
 
   return NextResponse.next();
 }
