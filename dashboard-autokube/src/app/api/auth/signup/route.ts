@@ -46,7 +46,7 @@ export async function POST(request: Request): Promise<Response> {
 
     const { password: _, ...userWithoutPassword } = user;
 
-    const response: SignupResponse = { message: 'User created', user: userWithoutPassword };
+    const response: SignupResponse = { message: 'User created', user };
     return Response.json(response);
   } catch (error) {
     const response: SignupResponse = { error: 'User could not be created' };
