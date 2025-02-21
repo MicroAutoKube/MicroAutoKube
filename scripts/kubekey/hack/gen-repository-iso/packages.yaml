@@ -1,0 +1,65 @@
+---
+common:
+  - curl
+  - ceph-common
+  - net-tools
+  - lvm2
+  - telnet
+  - tcpdump
+  - socat
+  - openssl
+  - chrony
+  - conntrack
+  - curl
+  - ipvsadm
+  - ipset
+  - psmisc
+  - bash-completion
+  - ebtables
+  - haproxy
+  - keepalived
+rpms:
+  - nfs-utils
+  - yum-utils
+  - bind-utils
+  - glusterfs-fuse
+  - lz4
+  - nss
+  - nss-sysinit
+  - nss-tools
+  - conntrack-tools
+debs:
+  - apt-transport-https
+  - ca-certificates
+  - dnsutils
+  - git
+  - glusterfs-client
+  - gnupg-agent
+  - nfs-common
+  - openssh-server
+  - software-properties-common
+  - sudo
+
+centos: []
+
+centos7:
+  - libselinux-python
+
+debian: []
+
+debian10: []
+
+debian11: []
+
+ubuntu: []
+
+ubuntu1804: []
+
+ubuntu2004: []
+
+# The minimum version of docker-ce on ubuntu 2204 is 20.10.13
+ubuntu2204: []
+
+almalinux: []
+
+almalinux90: []
