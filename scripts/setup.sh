@@ -126,31 +126,32 @@ fi
 sudo chown -R $APP_USER:$APP_USER $APP_DIR
 cd $APP_DIR/dashboard-autokube
 
-# Step 6: Create or update .env file
-echo -e "${YELLOW}🔧 Updating .env file with correct database credentials...${NC}"
+# Step 6: Install dependencies with Bun
+echo -e "${YELLOW}📦 Installing dependencies with Bun...${NC}"
+sudo -u $APP_USER bash -c "cd $APP_DIR/dashboard-autokube && $BUN_PATH install"
+
+# Step 7: Create .env file
+echo -e "${YELLOW}🔧 Creating .env file...${NC}"
 sudo -u $APP_USER bash -c "cat > $APP_DIR/dashboard-autokube/.env" <<EOF
 DATABASE_URL=postgresql://$APP_NAME:$DB_PASSWORD@localhost:5432/$APP_NAME
 NEXTAUTH_SECRET=$NEXTAUTH_SECRET
 NEXTAUTH_URL=http://${DOMAIN}:3000
 NODE_ENV=production
 EOF
-echo -e "${GREEN}✅ .env file updated.${NC}"
 
-# Step 7: Run Prisma Migrations (Retry if Needed)
-if [[ -d "$APP_DIR/dashboard-autokube/prisma" ]]; then
-    echo -e "${YELLOW}🔧 Running Prisma Migrations...${NC}"
-    for i in {1..5}; do
-        sudo -u $APP_USER bash -c "cd $APP_DIR/dashboard-autokube && $BUN_PATH run prisma migrate dev" && break
-        echo -e "${RED}⚠️ Prisma migration failed. Retrying in 5 seconds...${NC}"
-        sleep 5
-    done
-fi
+# Step 8: Run Prisma Migrations
+echo -e "${YELLOW}🔧 Running Prisma Migrations...${NC}"
+for i in {1..5}; do
+    sudo -u $APP_USER bash -c "cd $APP_DIR/dashboard-autokube && $BUN_PATH run prisma migrate dev" && break
+    echo -e "${RED}⚠️ Prisma migration failed. Retrying in 5 seconds...${NC}"
+    sleep 5
+done
 
-# Step 8: Build the project
-echo -e "${YELLOW}🏗 Building the project...${NC}"
-sudo -u $APP_USER bash -c "cd $APP_DIR/dashboard-autokube && $BUN_PATH run build"
+# Step 9: Build the project
+echo -e "${YELLOW}🏗 Building the project with Bun...${NC}"
+sudo -u $APP_USER bash -c "cd $APP_DIR/dashboard-autokube && $BUN_PATH build"
 
-# Step 9: Create systemd service
+# Step 10: Create systemd service
 echo -e "${YELLOW}🔧 Creating systemd service...${NC}"
 SERVICE_FILE="/etc/systemd/system/$APP_NAME.service"
 
@@ -172,13 +173,13 @@ Environment=HOSTNAME=0.0.0.0
 WantedBy=multi-user.target
 EOF
 
-# Step 10: Start and enable the service
+# Step 11: Start and enable the service
 echo -e "${YELLOW}🚀 Starting the service...${NC}"
 sudo systemctl daemon-reload
 sudo systemctl enable $APP_NAME
 sudo systemctl restart $APP_NAME
 
-# Step 11: Configure Nginx
+# Step 12: Configure Nginx
 echo -e "${YELLOW}🌐 Setting up Nginx reverse proxy...${NC}"
 NGINX_CONF="/etc/nginx/sites-available/$APP_NAME"
 
@@ -200,7 +201,7 @@ EOF
 sudo ln -s $NGINX_CONF /etc/nginx/sites-enabled/
 sudo systemctl restart nginx
 
-# Step 12: Set up SSL if using a domain
+# Step 13: Set up SSL if using a domain
 if [[ "$DOMAIN" != "localhost" ]]; then
     echo -e "${YELLOW}🔒 Setting up SSL...${NC}"
     sudo certbot --nginx -m "$EMAIL" -d "$DOMAIN" --agree-tos --non-interactive
