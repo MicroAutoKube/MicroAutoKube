@@ -64,11 +64,30 @@ fi
 echo -e "${YELLOW}🛠 Setting up PostgreSQL...${NC}"
 sudo systemctl start postgresql
 sudo systemctl enable postgresql
-sudo -u postgres psql <<EOF
-CREATE DATABASE $APP_NAME;
-CREATE USER $APP_NAME WITH ENCRYPTED PASSWORD '$DB_PASSWORD';
-GRANT ALL PRIVILEGES ON DATABASE $APP_NAME TO $APP_NAME;
-EOF
+
+# Check if database exists
+DB_EXISTS=$(sudo -u postgres psql -tAc "SELECT 1 FROM pg_database WHERE datname='$APP_NAME'")
+if [[ "$DB_EXISTS" == "1" ]]; then
+    echo -e "${GREEN}✅ Database '$APP_NAME' already exists. Skipping creation.${NC}"
+else
+    echo -e "${YELLOW}📦 Creating database '$APP_NAME'...${NC}"
+    sudo -u postgres psql -c "CREATE DATABASE $APP_NAME;"
+fi
+
+# Check if user exists
+USER_EXISTS=$(sudo -u postgres psql -tAc "SELECT 1 FROM pg_roles WHERE rolname='$APP_NAME'")
+if [[ "$USER_EXISTS" == "1" ]]; then
+    echo -e "${GREEN}✅ User '$APP_NAME' already exists. Skipping creation.${NC}"
+else
+    echo -e "${YELLOW}👤 Creating PostgreSQL user '$APP_NAME'...${NC}"
+    sudo -u postgres psql -c "CREATE USER $APP_NAME WITH ENCRYPTED PASSWORD '$DB_PASSWORD';"
+fi
+
+# Ensure user has access to the database
+echo -e "${YELLOW}🔑 Granting privileges to '$APP_NAME' on '$APP_NAME' database...${NC}"
+sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE $APP_NAME TO $APP_NAME;"
+echo -e "${GREEN}✅ PostgreSQL setup complete.${NC}"
+
 
 echo -e "${GREEN}✅ Database and user created!${NC}"
 echo -e "${BLUE}🔑 PostgreSQL password: ${RED}$DB_PASSWORD${NC}"
