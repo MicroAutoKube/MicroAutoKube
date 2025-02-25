@@ -56,7 +56,7 @@ echo -e "${BLUE}🔑 Generated secure PostgreSQL password: ${RED}$DB_PASSWORD${N
 # Step 4: Clone the repository
 echo -e "${YELLOW}📥 Cloning project repository...${NC}"
 sudo git clone https://github.com/MicroAutoKube/MicroAutoKube/tree/setup-script $APP_DIR
-cd $APP_DIR
+cd $APP_DIR/dashboard-autokube
 
 # Step 5: Create .env file
 echo -e "${YELLOW}🔧 Creating .env file...${NC}"
@@ -64,6 +64,7 @@ cat > .env <<EOF
 DATABASE_URL=postgresql://$APP_NAME:$DB_PASSWORD@localhost:5432/$APP_NAME
 NEXTAUTH_SECRET=$NEXTAUTH_SECRET
 NEXTAUTH_URL=http://${DOMAIN}:3000
+NODE_ENV=production
 EOF
 
 echo -e "${GREEN}✅ .env file created with secure values.${NC}"
