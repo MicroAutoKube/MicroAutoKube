@@ -86,6 +86,8 @@ fi
 
 # Ensure user has access to the database
 echo -e "${YELLOW}🔑 Granting privileges to '$APP_NAME' on '$APP_NAME' database...${NC}"
+sudo -u postgres psql -c "ALTER USER $APP_NAME WITH ENCRYPTED PASSWORD '$DB_PASSWORD';"
+sudo -u postgres psql -c "ALTER USER $APP_NAME CREATEDB;"
 sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE $APP_NAME TO $APP_NAME;"
 echo -e "${GREEN}✅ PostgreSQL setup complete.${NC}"
 
