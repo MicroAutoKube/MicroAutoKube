@@ -128,9 +128,63 @@ fi
 echo -e "${YELLOW}🏗 Building the project...${NC}"
 sudo -u $APP_USER bash -c "cd $APP_DIR/dashboard-autokube && $BUN_PATH run build"
 
-# Step 9: Start the application
-echo -e "${YELLOW}🚀 Starting the application...${NC}"
+# Step 9: Create systemd service
+echo -e "${YELLOW}🔧 Creating systemd service...${NC}"
+SERVICE_FILE="/etc/systemd/system/$APP_NAME.service"
+
+sudo bash -c "cat > $SERVICE_FILE" <<EOF
+[Unit]
+Description=$APP_NAME service
+After=network.target
+
+[Service]
+User=$APP_USER
+WorkingDirectory=$APP_DIR/dashboard-autokube
+ExecStart=$BUN_PATH server.js
+Restart=always
+Environment=NODE_ENV=production
+Environment=PORT=3000
+Environment=HOSTNAME=0.0.0.0
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# Step 10: Start and enable the service
+echo -e "${YELLOW}🚀 Starting the service...${NC}"
+sudo systemctl daemon-reload
+sudo systemctl enable $APP_NAME
 sudo systemctl restart $APP_NAME
+
+# Step 11: Configure Nginx
+echo -e "${YELLOW}🌐 Setting up Nginx reverse proxy...${NC}"
+NGINX_CONF="/etc/nginx/sites-available/$APP_NAME"
+
+sudo rm -f /etc/nginx/sites-enabled/$APP_NAME
+sudo bash -c "cat > $NGINX_CONF" <<EOF
+server {
+    listen 80;
+    server_name $DOMAIN;
+
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+    }
+}
+EOF
+sudo ln -s $NGINX_CONF /etc/nginx/sites-enabled/
+sudo systemctl restart nginx
+
+# Step 12: Set up SSL if using a domain
+if [[ "$DOMAIN" != "localhost" ]]; then
+    echo -e "${YELLOW}🔒 Setting up SSL...${NC}"
+    sudo certbot --nginx -m "$EMAIL" -d "$DOMAIN" --agree-tos --non-interactive
+    echo -e "${GREEN}✅ SSL installed.${NC}"
+fi
+
 
 echo -e "${GREEN}✅ Deployment complete!${NC}"
 echo -e "${BLUE}🌍 App running at: ${RED}http://$DOMAIN${NC}"
