@@ -11,7 +11,8 @@ NC='\033[0m' # No Color
 APP_NAME="autokube"
 APP_USER="nextjs"
 APP_DIR="/opt/$APP_NAME"
-BUN_PATH="/home/$APP_USER/.bun/bin/bun"
+BUN_INSTALL_DIR="/home/$APP_USER/.bun"
+BUN_PATH="$BUN_INSTALL_DIR/bin/bun"
 
 # Ask for domain
 read -p "🌍 Enter your domain (leave blank for localhost): " DOMAIN
@@ -24,7 +25,7 @@ else
     EMAIL="none"
 fi
 
-# Generate a secure random password
+# Generate secure credentials
 DB_PASSWORD=$(openssl rand -hex 16)
 NEXTAUTH_SECRET=$(openssl rand -hex 32)
 
@@ -39,12 +40,16 @@ sudo apt install -y curl unzip postgresql postgresql-contrib nginx certbot pytho
 if ! command -v bun &> /dev/null; then
     echo -e "${YELLOW}📦 Installing Bun...${NC}"
     curl -fsSL https://bun.sh/install | bash
+    echo 'export BUN_INSTALL="$HOME/.bun"' >> ~/.bashrc
+    echo 'export PATH="$BUN_INSTALL/bin:$PATH"' >> ~/.bashrc
+    source ~/.bashrc
 fi
 
-# Step 3: Create a system user if it doesn't exist
+# Step 3: Create system user if not exists
 if ! id "$APP_USER" &>/dev/null; then
     echo -e "${YELLOW}👤 Creating system user...${NC}"
     sudo useradd -m -r -s /bin/bash $APP_USER
+    sudo usermod -aG sudo $APP_USER
 fi
 
 # Step 4: Set up PostgreSQL
@@ -57,7 +62,7 @@ CREATE USER $APP_NAME WITH ENCRYPTED PASSWORD '$DB_PASSWORD';
 GRANT ALL PRIVILEGES ON DATABASE $APP_NAME TO $APP_NAME;
 EOF
 
-echo -e "${GREEN}✅ Database and user created successfully!${NC}"
+echo -e "${GREEN}✅ Database and user created!${NC}"
 echo -e "${BLUE}🔑 PostgreSQL password: ${RED}$DB_PASSWORD${NC}"
 
 # Step 5: Clone the repository
@@ -77,21 +82,27 @@ EOF
 
 echo -e "${GREEN}✅ .env file created.${NC}"
 
-# Step 7: Install dependencies as non-root user
+# Step 7: Ensure Bun is accessible for the user
+echo -e "${YELLOW}🔧 Ensuring Bun is in PATH...${NC}"
+sudo -u $APP_USER bash -c "echo 'export BUN_INSTALL=\"$HOME/.bun\"' >> ~/.bashrc"
+sudo -u $APP_USER bash -c "echo 'export PATH=\"\$BUN_INSTALL/bin:\$PATH\"' >> ~/.bashrc"
+sudo -u $APP_USER bash -c "source ~/.bashrc"
+
+# Step 8: Install dependencies as non-root user
 echo -e "${YELLOW}📦 Installing project dependencies...${NC}"
 sudo -u $APP_USER bash -c "cd $APP_DIR/dashboard-autokube && $BUN_PATH install --frozen-lockfile"
 
-# Step 8: Generate Prisma client (if Prisma exists)
+# Step 9: Generate Prisma client (if Prisma exists)
 if [ -d "$APP_DIR/dashboard-autokube/prisma" ]; then
     echo -e "${YELLOW}🔧 Generating Prisma client...${NC}"
     sudo -u $APP_USER bash -c "cd $APP_DIR/dashboard-autokube && $BUN_PATH prisma generate"
 fi
 
-# Step 9: Build the project
+# Step 10: Build the project
 echo -e "${YELLOW}🏗 Building the project...${NC}"
 sudo -u $APP_USER bash -c "cd $APP_DIR/dashboard-autokube && $BUN_PATH run build"
 
-# Step 10: Create systemd service
+# Step 11: Create systemd service
 echo -e "${YELLOW}🔧 Creating systemd service...${NC}"
 SERVICE_FILE="/etc/systemd/system/$APP_NAME.service"
 
@@ -113,13 +124,13 @@ Environment=HOSTNAME=0.0.0.0
 WantedBy=multi-user.target
 EOF
 
-# Step 11: Start and enable the service
+# Step 12: Start and enable the service
 echo -e "${YELLOW}🚀 Starting the service...${NC}"
 sudo systemctl daemon-reload
 sudo systemctl enable $APP_NAME
 sudo systemctl restart $APP_NAME
 
-# Step 12: Configure Nginx
+# Step 13: Configure Nginx
 echo -e "${YELLOW}🌐 Setting up Nginx reverse proxy...${NC}"
 NGINX_CONF="/etc/nginx/sites-available/$APP_NAME"
 
@@ -158,7 +169,7 @@ fi
 sudo ln -s $NGINX_CONF /etc/nginx/sites-enabled/
 sudo systemctl restart nginx
 
-# Step 13: Set up SSL if using a domain
+# Step 14: Set up SSL if using a domain
 if [[ "$DOMAIN" != "localhost" ]]; then
     echo -e "${YELLOW}🔒 Setting up SSL...${NC}"
     sudo certbot --nginx -d $DOMAIN --email $EMAIL --agree-tos --non-interactive
@@ -169,3 +180,4 @@ echo -e "${GREEN}✅ Deployment complete!${NC}"
 echo -e "${BLUE}🌍 App running at: ${RED}http://$DOMAIN${NC}"
 echo -e "${BLUE}🔑 PostgreSQL password: ${RED}$DB_PASSWORD${NC}"
 echo -e "${BLUE}🔑 NextAuth Secret: ${RED}$NEXTAUTH_SECRET${NC}"
+echo -e "${YELLOW}💡 Bun installed. Run: ${RED}source ~/.bashrc${NC} to refresh your terminal."
