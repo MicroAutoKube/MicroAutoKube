@@ -1,3 +1,9 @@
 # MicroAutoKube
 
-curl -fsSL https://raw.githubusercontent.com/MicroAutoKube/MicroAutoKube/refs/heads/main/scripts/setup.sh | bash
+
+Setup Script
+```sh
+curl -fsSL -o setup.sh https://raw.githubusercontent.com/MicroAutoKube/MicroAutoKube/main/scripts/setup.sh
+chmod +x setup.sh
+./setup.sh
+```

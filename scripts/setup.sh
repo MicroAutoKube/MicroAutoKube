@@ -7,9 +7,15 @@ BLUE='\033[1;34m'
 RED='\033[0;31m'
 NC='\033[0m' # No Color
 
-# Define variables
-APP_NAME="autokube"
-APP_USER="nextjs"
+# Ask for application name
+read -p "🚀 Enter the application name (default: autokube): " APP_NAME
+APP_NAME=${APP_NAME:-autokube}
+
+# Ask for system user
+read -p "👤 Enter the system user to run the application (default: nextjs): " APP_USER
+APP_USER=${APP_USER:-nextjs}
+
+# Define directories
 APP_DIR="/opt/$APP_NAME"
 BUN_INSTALL_DIR="/home/$APP_USER/.bun"
 BUN_PATH="$BUN_INSTALL_DIR/bin/bun"
@@ -36,20 +42,22 @@ echo -e "${YELLOW}🔄 Updating system and installing dependencies...${NC}"
 sudo apt update && sudo apt upgrade -y
 sudo apt install -y curl unzip postgresql postgresql-contrib nginx certbot python3-certbot-nginx openssl git
 
-# Step 2: Install Bun (if not installed)
-if ! command -v bun &> /dev/null; then
-    echo -e "${YELLOW}📦 Installing Bun...${NC}"
-    curl -fsSL https://bun.sh/install | bash
-    echo 'export BUN_INSTALL="$HOME/.bun"' >> ~/.bashrc
-    echo 'export PATH="$BUN_INSTALL/bin:$PATH"' >> ~/.bashrc
-    source ~/.bashrc
-fi
-
-# Step 3: Create system user if not exists
-if ! id "$APP_USER" &>/dev/null; then
-    echo -e "${YELLOW}👤 Creating system user...${NC}"
+# Step 2: Ensure user exists
+if id "$APP_USER" &>/dev/null; then
+    echo -e "${GREEN}✅ User $APP_USER already exists.${NC}"
+else
+    echo -e "${YELLOW}👤 Creating system user: $APP_USER...${NC}"
     sudo useradd -m -r -s /bin/bash $APP_USER
     sudo usermod -aG sudo $APP_USER
+fi
+
+# Step 3: Install Bun for the correct user
+if ! sudo -u $APP_USER bash -c "command -v bun" &> /dev/null; then
+    echo -e "${YELLOW}📦 Installing Bun for $APP_USER...${NC}"
+    sudo -u $APP_USER bash -c "curl -fsSL https://bun.sh/install | bash"
+    sudo -u $APP_USER bash -c "echo 'export BUN_INSTALL=\"$HOME/.bun\"' >> ~/.bashrc"
+    sudo -u $APP_USER bash -c "echo 'export PATH=\"\$BUN_INSTALL/bin:\$PATH\"' >> ~/.bashrc"
+    sudo -u $APP_USER bash -c "source ~/.bashrc"
 fi
 
 # Step 4: Set up PostgreSQL
@@ -66,8 +74,13 @@ echo -e "${GREEN}✅ Database and user created!${NC}"
 echo -e "${BLUE}🔑 PostgreSQL password: ${RED}$DB_PASSWORD${NC}"
 
 # Step 5: Clone the repository
-echo -e "${YELLOW}📥 Cloning project repository...${NC}"
-sudo git clone https://github.com/MicroAutoKube/MicroAutoKube $APP_DIR
+if [[ -d "$APP_DIR" ]]; then
+    echo -e "${YELLOW}🔄 Repository exists. Pulling latest changes...${NC}"
+    sudo -u $APP_USER bash -c "cd $APP_DIR && git pull"
+else
+    echo -e "${YELLOW}📥 Cloning project repository...${NC}"
+    sudo -u $APP_USER bash -c "git clone https://github.com/MicroAutoKube/MicroAutoKube $APP_DIR"
+fi
 sudo chown -R $APP_USER:$APP_USER $APP_DIR
 cd $APP_DIR/dashboard-autokube
 
@@ -82,27 +95,21 @@ EOF
 
 echo -e "${GREEN}✅ .env file created.${NC}"
 
-# Step 7: Ensure Bun is accessible for the user
-echo -e "${YELLOW}🔧 Ensuring Bun is in PATH...${NC}"
-sudo -u $APP_USER bash -c "echo 'export BUN_INSTALL=\"$HOME/.bun\"' >> ~/.bashrc"
-sudo -u $APP_USER bash -c "echo 'export PATH=\"\$BUN_INSTALL/bin:\$PATH\"' >> ~/.bashrc"
-sudo -u $APP_USER bash -c "source ~/.bashrc"
-
-# Step 8: Install dependencies as non-root user
+# Step 7: Install dependencies as non-root user
 echo -e "${YELLOW}📦 Installing project dependencies...${NC}"
 sudo -u $APP_USER bash -c "cd $APP_DIR/dashboard-autokube && $BUN_PATH install --frozen-lockfile"
 
-# Step 9: Generate Prisma client (if Prisma exists)
-if [ -d "$APP_DIR/dashboard-autokube/prisma" ]; then
+# Step 8: Generate Prisma client (if Prisma exists)
+if [[ -d "$APP_DIR/dashboard-autokube/prisma" ]]; then
     echo -e "${YELLOW}🔧 Generating Prisma client...${NC}"
     sudo -u $APP_USER bash -c "cd $APP_DIR/dashboard-autokube && $BUN_PATH prisma generate"
 fi
 
-# Step 10: Build the project
+# Step 9: Build the project
 echo -e "${YELLOW}🏗 Building the project...${NC}"
 sudo -u $APP_USER bash -c "cd $APP_DIR/dashboard-autokube && $BUN_PATH run build"
 
-# Step 11: Create systemd service
+# Step 10: Create systemd service
 echo -e "${YELLOW}🔧 Creating systemd service...${NC}"
 SERVICE_FILE="/etc/systemd/system/$APP_NAME.service"
 
@@ -124,33 +131,18 @@ Environment=HOSTNAME=0.0.0.0
 WantedBy=multi-user.target
 EOF
 
-# Step 12: Start and enable the service
+# Step 11: Start and enable the service
 echo -e "${YELLOW}🚀 Starting the service...${NC}"
 sudo systemctl daemon-reload
 sudo systemctl enable $APP_NAME
 sudo systemctl restart $APP_NAME
 
-# Step 13: Configure Nginx
+# Step 12: Configure Nginx
 echo -e "${YELLOW}🌐 Setting up Nginx reverse proxy...${NC}"
 NGINX_CONF="/etc/nginx/sites-available/$APP_NAME"
 
-if [[ "$DOMAIN" == "localhost" ]]; then
-    sudo bash -c "cat > $NGINX_CONF" <<EOF
-server {
-    listen 80;
-    server_name localhost;
-
-    location / {
-        proxy_pass http://127.0.0.1:3000;
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-    }
-}
-EOF
-else
-    sudo bash -c "cat > $NGINX_CONF" <<EOF
+sudo rm -f /etc/nginx/sites-enabled/$APP_NAME
+sudo bash -c "cat > $NGINX_CONF" <<EOF
 server {
     listen 80;
     server_name $DOMAIN;
@@ -164,15 +156,13 @@ server {
     }
 }
 EOF
-fi
-
 sudo ln -s $NGINX_CONF /etc/nginx/sites-enabled/
 sudo systemctl restart nginx
 
-# Step 14: Set up SSL if using a domain
+# Step 13: Set up SSL if using a domain
 if [[ "$DOMAIN" != "localhost" ]]; then
     echo -e "${YELLOW}🔒 Setting up SSL...${NC}"
-    sudo certbot --nginx -d $DOMAIN --email $EMAIL --agree-tos --non-interactive
+    sudo certbot --nginx -m "$EMAIL" -d "$DOMAIN" --agree-tos --non-interactive
     echo -e "${GREEN}✅ SSL installed.${NC}"
 fi
 
@@ -180,4 +170,3 @@ echo -e "${GREEN}✅ Deployment complete!${NC}"
 echo -e "${BLUE}🌍 App running at: ${RED}http://$DOMAIN${NC}"
 echo -e "${BLUE}🔑 PostgreSQL password: ${RED}$DB_PASSWORD${NC}"
 echo -e "${BLUE}🔑 NextAuth Secret: ${RED}$NEXTAUTH_SECRET${NC}"
-echo -e "${YELLOW}💡 Bun installed. Run: ${RED}source ~/.bashrc${NC} to refresh your terminal."
