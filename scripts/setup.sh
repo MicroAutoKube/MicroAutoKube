@@ -55,7 +55,7 @@ echo -e "${BLUE}🔑 Generated secure PostgreSQL password: ${RED}$DB_PASSWORD${N
 
 # Step 4: Clone the repository
 echo -e "${YELLOW}📥 Cloning project repository...${NC}"
-sudo git clone https://github.com/yourusername/yourproject.git $APP_DIR
+sudo git clone https://github.com/MicroAutoKube/MicroAutoKube/tree/setup-script $APP_DIR
 cd $APP_DIR
 
 # Step 5: Create .env file
