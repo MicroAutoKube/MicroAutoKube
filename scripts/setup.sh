@@ -121,7 +121,7 @@ sudo -u $APP_USER bash -c "cd $APP_DIR/dashboard-autokube && $BUN_PATH install -
 # Step 8: Generate Prisma client (if Prisma exists)
 if [[ -d "$APP_DIR/dashboard-autokube/prisma" ]]; then
     echo -e "${YELLOW}🔧 Generating Prisma client...${NC}"
-    sudo -u $APP_USER bash -c "cd $APP_DIR/dashboard-autokube && $BUN_PATH prisma generate"
+    sudo -u $APP_USER bash -c "cd $APP_DIR/dashboard-autokube && $BUN_PATH run prisma migrate dev"
 fi
 
 # Step 9: Build the project
