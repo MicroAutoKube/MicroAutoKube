@@ -61,6 +61,7 @@ if ! sudo -u $APP_USER bash -c "command -v bun" &> /dev/null; then
 fi
 
 # Step 4: Set up PostgreSQL
+# Step 4: Set up PostgreSQL
 echo -e "${YELLOW}🛠 Setting up PostgreSQL...${NC}"
 sudo systemctl start postgresql
 sudo systemctl enable postgresql
@@ -84,19 +85,20 @@ else
     sudo -u postgres psql -c "CREATE USER $APP_NAME WITH ENCRYPTED PASSWORD '$DB_PASSWORD';"
 fi
 
-# Grant necessary privileges for Prisma
-echo -e "${YELLOW}🔑 Granting full privileges to '$APP_NAME' on '$APP_NAME' database...${NC}"
+# Grant necessary privileges for Prisma to work
+echo -e "${YELLOW}🔑 Granting full privileges to '$APP_NAME' on '$APP_NAME' database and public schema...${NC}"
 sudo -u postgres psql -c "ALTER USER $APP_NAME CREATEDB;"
 sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE $APP_NAME TO $APP_NAME;"
-sudo -u postgres psql -c "GRANT USAGE, CREATE ON SCHEMA public TO $APP_NAME;"
-sudo -u postgres psql -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO $APP_NAME;"
-sudo -u postgres psql -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO $APP_NAME;"
-sudo -u postgres psql -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO $APP_NAME;"
-sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO $APP_NAME;"
-sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO $APP_NAME;"
-sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA public TO $APP_NAME;"
-echo -e "${GREEN}✅ PostgreSQL setup complete.${NC}"
 
+# Ensure the user has full access to the public schema
+sudo -u postgres psql -d $APP_NAME -c "GRANT USAGE, CREATE ON SCHEMA public TO $APP_NAME;"
+sudo -u postgres psql -d $APP_NAME -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO $APP_NAME;"
+sudo -u postgres psql -d $APP_NAME -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO $APP_NAME;"
+sudo -u postgres psql -d $APP_NAME -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO $APP_NAME;"
+sudo -u postgres psql -d $APP_NAME -c "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO $APP_NAME;"
+sudo -u postgres psql -d $APP_NAME -c "GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO $APP_NAME;"
+sudo -u postgres psql -d $APP_NAME -c "GRANT ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA public TO $APP_NAME;"
+sudo -u postgres psql -d $APP_NAME -c "ALTER SCHEMA public OWNER TO $APP_NAME;"
 
 # Restart PostgreSQL to ensure changes apply
 echo -e "${YELLOW}🔄 Restarting PostgreSQL to apply changes...${NC}"
