@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -20,4 +14,55 @@ model User {
   password  String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  clusters  ClusterProfile[] // One user can have multiple clusters
+}
+
+model ClusterProfile {
+  id                  String   @id @default(cuid())
+  name                String   @unique
+  kubernetesVersion   String   // Kubernetes version (e.g., 1.26.3)
+  containerRuntime    ContainerRuntime // Enum (docker, containerd, etc.)
+  containerVersion    String   // Container runtime version (e.g., 20.10.7)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  userId              String
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  nodes               Node[] // A cluster can have multiple nodes (hosts)
+}
+
+model Node {
+  id         String   @id @default(cuid())
+  hostname   String   @unique
+  ipAddress  String   @unique
+  authType   AuthType // Enum for authentication type
+  username   String
+  password   String?  // Nullable: Used if authType = PASSWORD
+  sshKey     String?  // Nullable: Used if authType = SSH_KEY
+  role       NodeRole // Node's role in the cluster (Master, Worker, etc.)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  clusterId  String
+  cluster    ClusterProfile @relation(fields: [clusterId], references: [id], onDelete: Cascade)
+}
+
+enum AuthType {
+  PASSWORD
+  SSH_KEY
+}
+
+enum NodeRole {
+  MASTER
+  WORKER
+  DATABASE
+  STORAGE
+}
+
+enum ContainerRuntime {
+  DOCKER
+  CONTAINERD
+  CRI_O
 }

@@ -1,14 +1,16 @@
-"use client"
-
-import { useSession } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
-import React, { useEffect } from 'react'
+import { BackgroundLooper } from '@/components/background'
+import React from 'react'
 
 const Page = () => {
-  const { data: session, status } = useSession()
 
   return (
-    <div>{status === 'authenticated' ? 'Welcome!' : 'Page'}</div>
+
+    <div className="flex flex-col items-center justify-center h-screen">
+      <div className="border-2 border-[#696796] rounded-md shadow-md p-12 flex flex-col items-center gap-4 bg-gray-900">
+        
+      </div>
+      <BackgroundLooper />
+    </div>
   )
 }
 
