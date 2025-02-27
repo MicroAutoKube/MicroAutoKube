@@ -160,11 +160,23 @@ EOF
 
 # Step 8: Run Prisma Migrations
 echo -e "${YELLOW}🔧 Running Prisma Migrations with $PKG_MANAGER...${NC}"
+
+# Determine the correct Prisma migration command
+if [[ "$PKG_MANAGER" == "npm" ]]; then
+    PRISMA_CMD="npx prisma migrate dev"
+elif [[ "$PKG_MANAGER" == "pnpm" ]]; then
+    PRISMA_CMD="pnpx prisma migrate dev"
+else
+    PRISMA_CMD="bun run prisma migrate dev"
+fi
+
+# Retry up to 5 times if migration fails
 for i in {1..5}; do
-    sudo -u $APP_USER bash -c "cd $APP_DIR/dashboard-autokube && $PKG_MANAGER run prisma migrate dev" && break
-    echo -e "${RED}⚠️ Prisma migration failed. Retrying...${NC}"
+    sudo -u $APP_USER bash -c "cd $APP_DIR/dashboard-autokube && $PRISMA_CMD" && break
+    echo -e "${RED}⚠️ Prisma migration failed. Retrying in 5 seconds...${NC}"
     sleep 5
 done
+
 
 # Step 9: Build the project
 echo -e "${YELLOW}🏗 Building the project with $PKG_MANAGER...${NC}"
