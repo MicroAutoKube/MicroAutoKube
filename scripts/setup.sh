@@ -251,6 +251,7 @@ server {
 }
 EOF
 sudo ln -s $NGINX_CONF /etc/nginx/sites-enabled/
+sudo rm /etc/nginx/sites-enabled/default
 sudo systemctl restart nginx
 
 # Step 14: Set up SSL if using a domain
@@ -260,8 +261,13 @@ if [[ "$DOMAIN" != "localhost" ]]; then
     echo -e "${GREEN}✅ SSL installed.${NC}"
 fi
 
+# Get the server's IP address
+SERVER_IP=$(hostname -I | awk '{print $1}')
+
 # Final Message
 echo -e "${GREEN}✅ Deployment complete!${NC}"
 echo -e "${BLUE}🌍 App running at: ${RED}http://$DOMAIN${NC}"
+echo -e "${BLUE}🌍 Server IP Address: ${RED}http://$SERVER_IP${NC}"
 echo -e "${BLUE}🔑 PostgreSQL password: ${RED}$DB_PASSWORD${NC}"
 echo -e "${BLUE}🔑 NextAuth Secret: ${RED}$NEXTAUTH_SECRET${NC}"
+
