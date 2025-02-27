@@ -16,8 +16,6 @@ cleanup() {
 # Trap SIGINT (Ctrl+C) to call cleanup function
 trap cleanup SIGINT
 
-
-
 # Ask for application name
 read -p "🚀 Enter the application name (default: autokube): " APP_NAME
 APP_NAME=${APP_NAME:-autokube}
@@ -26,10 +24,25 @@ APP_NAME=${APP_NAME:-autokube}
 read -p "👤 Enter the system user to run the application (default: tester): " APP_USER
 APP_USER=${APP_USER:-tester}
 
+# Ask for package manager
+echo -e "${YELLOW}📦 Select a package manager:${NC}"
+echo "1) bun"
+echo "2) npm"
+echo "3) pnpm"
+read -p "Enter choice (default: bun): " PKG_MANAGER_CHOICE
+
+# Set package manager based on user choice
+case "$PKG_MANAGER_CHOICE" in
+    2) PKG_MANAGER="npm";;
+    3) PKG_MANAGER="pnpm";;
+    *) PKG_MANAGER="bun";;
+esac
+
 # Define directories
 APP_DIR="/opt/$APP_NAME"
 BUN_INSTALL_DIR="/home/$APP_USER/.bun"
 BUN_PATH="$BUN_INSTALL_DIR/bin/bun"
+NODE_PATH="/usr/bin/node"
 
 # Ask for domain
 read -p "🌍 Enter your domain (leave blank for localhost): " DOMAIN
@@ -51,7 +64,7 @@ echo -e "${BLUE}🚀 Starting $APP_NAME setup...${NC}"
 # Step 1: Update system and install dependencies
 echo -e "${YELLOW}🔄 Updating system and installing dependencies...${NC}"
 sudo apt update && sudo apt upgrade -y
-sudo apt install -y curl unzip postgresql postgresql-contrib nginx certbot python3-certbot-nginx openssl git
+sudo apt install -y curl unzip postgresql postgresql-contrib nginx certbot python3-certbot-nginx openssl git nodejs npm
 
 # Step 2: Ensure user exists
 if id "$APP_USER" &>/dev/null; then
@@ -62,16 +75,22 @@ else
     sudo usermod -aG sudo $APP_USER
 fi
 
-# Step 3: Install Bun for the correct user
-if ! sudo -u $APP_USER bash -c "command -v bun" &> /dev/null; then
-    echo -e "${YELLOW}📦 Installing Bun for $APP_USER...${NC}"
-    sudo -u $APP_USER bash -c "curl -fsSL https://bun.sh/install | bash"
-    sudo -u $APP_USER bash -c "echo 'export BUN_INSTALL=\"$HOME/.bun\"' >> ~/.bashrc"
-    sudo -u $APP_USER bash -c "echo 'export PATH=\"\$BUN_INSTALL/bin:\$PATH\"' >> ~/.bashrc"
-    sudo -u $APP_USER bash -c "source ~/.bashrc"
+# Step 3: Install the selected package manager
+if [[ "$PKG_MANAGER" == "bun" ]]; then
+    if ! sudo -u $APP_USER bash -c "command -v bun" &> /dev/null; then
+        echo -e "${YELLOW}📦 Installing Bun for $APP_USER...${NC}"
+        sudo -u $APP_USER bash -c "curl -fsSL https://bun.sh/install | bash"
+        sudo -u $APP_USER bash -c "echo 'export BUN_INSTALL=\"$HOME/.bun\"' >> ~/.bashrc"
+        sudo -u $APP_USER bash -c "echo 'export PATH=\"\$BUN_INSTALL/bin:\$PATH\"' >> ~/.bashrc"
+        sudo -u $APP_USER bash -c "source ~/.bashrc"
+    fi
+elif [[ "$PKG_MANAGER" == "pnpm" ]]; then
+    if ! sudo -u $APP_USER bash -c "command -v pnpm" &> /dev/null; then
+        echo -e "${YELLOW}📦 Installing pnpm...${NC}"
+        sudo -u $APP_USER bash -c "npm install -g pnpm"
+    fi
 fi
 
-# Step 4: Set up PostgreSQL
 # Step 4: Set up PostgreSQL
 echo -e "${YELLOW}🛠 Setting up PostgreSQL...${NC}"
 sudo systemctl start postgresql
@@ -126,9 +145,9 @@ fi
 sudo chown -R $APP_USER:$APP_USER $APP_DIR
 cd $APP_DIR/dashboard-autokube
 
-# Step 6: Install dependencies with Bun
-echo -e "${YELLOW}📦 Installing dependencies with Bun...${NC}"
-sudo -u $APP_USER bash -c "cd $APP_DIR/dashboard-autokube && $BUN_PATH install"
+# Step 6: Install dependencies
+echo -e "${YELLOW}📦 Installing dependencies with $PKG_MANAGER...${NC}"
+sudo -u $APP_USER bash -c "cd $APP_DIR/dashboard-autokube && $PKG_MANAGER install"
 
 # Step 7: Create .env file
 echo -e "${YELLOW}🔧 Creating .env file...${NC}"
@@ -140,16 +159,16 @@ NODE_ENV=production
 EOF
 
 # Step 8: Run Prisma Migrations
-echo -e "${YELLOW}🔧 Running Prisma Migrations...${NC}"
+echo -e "${YELLOW}🔧 Running Prisma Migrations with $PKG_MANAGER...${NC}"
 for i in {1..5}; do
-    sudo -u $APP_USER bash -c "cd $APP_DIR/dashboard-autokube && $BUN_PATH run prisma migrate dev" && break
-    echo -e "${RED}⚠️ Prisma migration failed. Retrying in 5 seconds...${NC}"
+    sudo -u $APP_USER bash -c "cd $APP_DIR/dashboard-autokube && $PKG_MANAGER run prisma migrate dev" && break
+    echo -e "${RED}⚠️ Prisma migration failed. Retrying...${NC}"
     sleep 5
 done
 
 # Step 9: Build the project
-echo -e "${YELLOW}🏗 Building the project with Bun...${NC}"
-sudo -u $APP_USER bash -c "cd $APP_DIR/dashboard-autokube && $BUN_PATH build"
+echo -e "${YELLOW}🏗 Building the project with $PKG_MANAGER...${NC}"
+sudo -u $APP_USER bash -c "cd $APP_DIR/dashboard-autokube && $PKG_MANAGER run build"
 
 # Step 10: Create systemd service
 echo -e "${YELLOW}🔧 Creating systemd service...${NC}"
