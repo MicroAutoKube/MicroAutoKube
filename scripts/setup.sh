@@ -186,6 +186,15 @@ sudo -u $APP_USER bash -c "cd $APP_DIR/dashboard-autokube && $PKG_MANAGER run bu
 echo -e "${YELLOW}🔧 Creating systemd service...${NC}"
 SERVICE_FILE="/etc/systemd/system/$APP_NAME.service"
 
+# Determine correct ExecStart command based on package manager
+if [[ "$PKG_MANAGER" == "npm" ]]; then
+    EXEC_START="npm start"
+elif [[ "$PKG_MANAGER" == "pnpm" ]]; then
+    EXEC_START="pnpm start"
+else
+    EXEC_START="$BUN_PATH run start"
+fi
+
 sudo bash -c "cat > $SERVICE_FILE" <<EOF
 [Unit]
 Description=$APP_NAME service
@@ -194,7 +203,7 @@ After=network.target
 [Service]
 User=$APP_USER
 WorkingDirectory=$APP_DIR/dashboard-autokube
-ExecStart=$BUN_PATH server.js
+ExecStart=$EXEC_START
 Restart=always
 Environment=NODE_ENV=production
 Environment=PORT=3000
@@ -210,7 +219,19 @@ sudo systemctl daemon-reload
 sudo systemctl enable $APP_NAME
 sudo systemctl restart $APP_NAME
 
-# Step 12: Configure Nginx
+# Step 12: Check if the service is running
+echo -e "${YELLOW}📡 Checking service status...${NC}"
+sleep 3  # Wait a few seconds for service to start
+SERVICE_STATUS=$(systemctl is-active $APP_NAME)
+
+if [[ "$SERVICE_STATUS" == "active" ]]; then
+    echo -e "${GREEN}✅ Service '$APP_NAME' is running successfully!${NC}"
+else
+    echo -e "${RED}❌ Service '$APP_NAME' failed to start! Check logs using:${NC}"
+    echo -e "${YELLOW}journalctl -u $APP_NAME --no-pager --lines=50${NC}"
+fi
+
+# Step 13: Configure Nginx
 echo -e "${YELLOW}🌐 Setting up Nginx reverse proxy...${NC}"
 NGINX_CONF="/etc/nginx/sites-available/$APP_NAME"
 
@@ -232,14 +253,14 @@ EOF
 sudo ln -s $NGINX_CONF /etc/nginx/sites-enabled/
 sudo systemctl restart nginx
 
-# Step 13: Set up SSL if using a domain
+# Step 14: Set up SSL if using a domain
 if [[ "$DOMAIN" != "localhost" ]]; then
     echo -e "${YELLOW}🔒 Setting up SSL...${NC}"
     sudo certbot --nginx -m "$EMAIL" -d "$DOMAIN" --agree-tos --non-interactive
     echo -e "${GREEN}✅ SSL installed.${NC}"
 fi
 
-
+# Final Message
 echo -e "${GREEN}✅ Deployment complete!${NC}"
 echo -e "${BLUE}🌍 App running at: ${RED}http://$DOMAIN${NC}"
 echo -e "${BLUE}🔑 PostgreSQL password: ${RED}$DB_PASSWORD${NC}"
