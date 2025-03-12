@@ -26,11 +26,11 @@ const Layout: React.FC<LayoutProps> = ({
 
                 {/* Navigation Buttons */}
                 <div className="flex flex-col space-y-4 w-full">
-                    <SidebarButton icon={<FaHome />} text="Dashboard" />
-                    <SidebarButton icon={<FaChartPie />} text="Analytics" />
-                    <SidebarButton icon={<FaUser />} text="Profile" />
-                    <SidebarButton icon={<FaCog />} text="Settings" />
-                    <SidebarButton icon={<FaSignOutAlt />} text="Logout" />
+                    <SidebarButton icon={<FaHome />} text="Dashboard"  route="/dashboard" />
+                    <SidebarButton icon={<FaChartPie />} text="Analytics" route="/analytics" />
+                    <SidebarButton icon={<FaUser />} text="Profile" route="/profile" />
+                    <SidebarButton icon={<FaCog />} text="Settings" route="/settings" />
+                    <SidebarButton icon={<FaSignOutAlt />} text="Logout" route="/logout" />
                 </div>
             </div>
 
