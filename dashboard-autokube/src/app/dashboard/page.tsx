@@ -1,16 +1,9 @@
-import { BackgroundLooper } from '@/components/background'
-import React from 'react'
-import { ListProfile } from "@/components/cluster"
+"use client"
 
 
-const Page = () => {
-
+export default function Page() {
   return (
-
-    <div className="flex flex-col items-center justify-center h-screen">
-        <ListProfile />
-    </div>
-  )
+    <div></div>
+  );
 }
 
-export default Page
