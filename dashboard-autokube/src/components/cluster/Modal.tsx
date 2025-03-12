@@ -10,7 +10,7 @@ const ClusterModal = ({ isOpen, setIsOpen, createCluster }: any) => {
   const [containerRuntime, setContainerRuntime] = useState("DOCKER");
   const [containerVersion, setContainerVersion] = useState("");
   const [nodes, setNodes] = useState([
-    { id: crypto.randomUUID(), hostname: "", ipAddress: "", role: "WORKER" },
+    { id: crypto.randomUUID(), hostname: "", ipAddress: "", role: "MASTER" },
   ]);
   const addNode = () => {
     const newNode = {
@@ -53,7 +53,7 @@ const ClusterModal = ({ isOpen, setIsOpen, createCluster }: any) => {
 
   return (
     <Transition appear show={isOpen} as={Fragment}>
-      <Dialog as="div" className="relative z-20" onClose={handleCancel}>
+      <Dialog as="div" className="relative z-20 " onClose={handleCancel}>
         {/* Overlay */}
         <Transition.Child
           as={Fragment}
@@ -68,7 +68,7 @@ const ClusterModal = ({ isOpen, setIsOpen, createCluster }: any) => {
         </Transition.Child>
 
         {/* Modal Content */}
-        <div className="fixed inset-0 flex items-center justify-center">
+        <div className="fixed inset-0 flex items-center justify-center ">
           <Transition.Child
             as={Fragment}
             enter="ease-out duration-300"
@@ -78,7 +78,7 @@ const ClusterModal = ({ isOpen, setIsOpen, createCluster }: any) => {
             leaveFrom="scale-100 opacity-100"
             leaveTo="scale-95 opacity-0"
           >
-            <Dialog.Panel className="bg-gray-900 p-6 rounded-lg shadow-2xl w-96 border border-gray-700">
+            <Dialog.Panel className="bg-gray-900 p-12 rounded-lg shadow-2xl min-w-[50vw] w-96 border border-gray-700">
               {/* Header */}
               <div className="flex justify-between items-center">
                 <h2 className="text-white text-lg font-semibold">Create Cluster</h2>
@@ -105,7 +105,7 @@ const ClusterModal = ({ isOpen, setIsOpen, createCluster }: any) => {
                   <option value="kubespray">Kubespray</option>
                   <option value="kubekey" disabled>Kubekey (Coming Soon)</option>
                 </select>
-                <div className="absolute right-2 top-5 text-yellow-400">
+                <div className="absolute right-5 top-5 text-yellow-400">
                   <FaExclamationCircle title="Kubekey is coming soon!" />
                 </div>
               </div>
@@ -143,7 +143,7 @@ const ClusterModal = ({ isOpen, setIsOpen, createCluster }: any) => {
               <div className="mt-3 space-y-3">
                 {nodes.map((node, index) => (
                   <div
-                    className="p-2 bg-gray-800 rounded border border-gray-700 flex items-center justify-between"
+                    key={node.id}  className="p-2 bg-gray-800 rounded border border-gray-700 flex items-center justify-between"
                   >
                     <div className="flex-1">
                       <input
@@ -163,8 +163,8 @@ const ClusterModal = ({ isOpen, setIsOpen, createCluster }: any) => {
                         value={node.role}
                         onChange={(e) => handleNodeChange(node.id, "role", e.target.value)}
                       >
-                        <option value="WORKER">Worker</option>
                         <option value="MASTER">Master</option>
+                        <option value="WORKER">Worker</option>
                       </select>
                     </div>
                     <div className="flex items-center pl-4 pr-2">
