@@ -12,7 +12,7 @@ export interface GlobalAuth {
   mode: string;
   username: string;
   password: string;
-  sshKey: File | null;
+  sshKey: File | String | null;
 }
 
 export interface Node {
@@ -22,5 +22,5 @@ export interface Node {
   authMode: string;
   username: string;
   password: string;
-  sshKey: File | null;
+  sshKey: File | String | null;
 }
