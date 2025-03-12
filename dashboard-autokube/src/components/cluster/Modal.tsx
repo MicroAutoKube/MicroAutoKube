@@ -1,9 +1,18 @@
 "use client";
+import { ClusterPayload } from "@/types/cluster";
 import { Dialog, Transition } from "@headlessui/react";
 import { useState, Fragment } from "react";
 import { FaPlus, FaTimes, FaExclamationCircle, FaTrash } from "react-icons/fa";
 
-const ClusterModal = ({ isOpen, setIsOpen, createCluster }: any) => {
+interface ClusterModalProps {
+  isOpen: boolean;
+  setIsOpen: (isOpen: boolean) => void;
+  createCluster: (payload: ClusterPayload) => Promise<void>;
+}
+
+
+
+const ClusterModal = ({ isOpen, setIsOpen, createCluster }: ClusterModalProps) => {
   const [clusterName, setClusterName] = useState("");
   const [toolInstallation, setToolInstallation] = useState("kubespray");
   const [kubernetesVersion, setKubernetesVersion] = useState("");

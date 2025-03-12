@@ -1,11 +1,13 @@
 "use client"
 import React, { useState } from "react";
 import ClusterModal from "./Modal";
+import { ClusterPayload } from "@/types/cluster"
 
 const ListProfile = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const createCluster = async (clusterData: any) => {
+  const createCluster = async (clusterData: ClusterPayload) => {
+
     const response = await fetch("/api/clusters", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -15,6 +17,8 @@ const ListProfile = () => {
     if (!response.ok) {
       console.error("Failed to create cluster");
     }
+
+    console.log(response);
   };
 
   return (
