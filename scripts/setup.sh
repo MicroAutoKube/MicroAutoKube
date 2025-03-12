@@ -58,6 +58,7 @@ fi
 # Generate secure credentials
 DB_PASSWORD=$(openssl rand -hex 16)
 NEXTAUTH_SECRET=$(openssl rand -hex 32)
+ENCRYPTION_KEY=$(openssl rand -hex 32)
 
 echo -e "${BLUE}🚀 Starting $APP_NAME setup...${NC}"
 
@@ -156,6 +157,7 @@ DATABASE_URL=postgresql://$APP_NAME:$DB_PASSWORD@localhost:5432/$APP_NAME
 NEXTAUTH_SECRET=$NEXTAUTH_SECRET
 NEXTAUTH_URL=http://${DOMAIN}:3000
 NODE_ENV=production
+ENCRYPTION_KEY=$ENCRYPTION_KEY
 EOF
 
 # Step 8: Run Prisma Migrations
@@ -270,4 +272,6 @@ echo -e "${BLUE}🌍 App running at: ${RED}http://$DOMAIN${NC}"
 echo -e "${BLUE}🌍 Server IP Address: ${RED}http://$SERVER_IP${NC}"
 echo -e "${BLUE}🔑 PostgreSQL password: ${RED}$DB_PASSWORD${NC}"
 echo -e "${BLUE}🔑 NextAuth Secret: ${RED}$NEXTAUTH_SECRET${NC}"
-
+echo -e "${BLUE}🔑 Encryption Key: ${RED}$ENCRYPTION_KEY${NC}"
+echo -e "${BLUE}📧 Default admin email: ${RED}admin@example.com${NC}"
+echo -e "${BLUE}🔑 Default admin password: ${RED}admin${NC}"
