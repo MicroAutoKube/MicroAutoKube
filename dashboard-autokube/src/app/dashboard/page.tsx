@@ -1,9 +1,9 @@
+import { ListProfile } from "@/components/cluster";
+
 export default function Page() {
   return (
-    <div>
-
-
-      
+    <div className="w-full">
+      <ListProfile />
     </div>
   );
 }

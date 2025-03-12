@@ -12,7 +12,7 @@ const Layout: React.FC<LayoutProps> = ({
     children,
 }: Readonly<LayoutProps>) => {
     return (
-        <div className="flex w-screen h-screen">
+        <div className="flex w-screen h-screen gap-20">
             {/* Sidebar */}
             <div className="flex flex-col items-center w-64 bg-gray-800 bg-opacity-50 backdrop-blur-lg shadow-xl rounded-r-3xl p-6 border-r border-gray-700">
                 {/* Logo */}
@@ -26,7 +26,7 @@ const Layout: React.FC<LayoutProps> = ({
 
                 {/* Navigation Buttons */}
                 <div className="flex flex-col space-y-4 w-full">
-                    <SidebarButton icon={<FaHome />} text="Dashboard"  route="/dashboard" />
+                    <SidebarButton icon={<FaHome />} text="Dashboard" route="/dashboard" />
                     <SidebarButton icon={<FaChartPie />} text="Analytics" route="/analytics" />
                     <SidebarButton icon={<FaUser />} text="Profile" route="/profile" />
                     <SidebarButton icon={<FaCog />} text="Settings" route="/settings" />
@@ -34,7 +34,10 @@ const Layout: React.FC<LayoutProps> = ({
                 </div>
             </div>
 
-            {children}
+            <div className="w-full flex justify-center min-h-[80vh] my-10 bg-gray-800 bg-opacity-50 backdrop-blur-lg shadow-xl rounded-3xl p-6 border border-gray-700">
+                {children}
+            </div>
+
             <BackgroundLooper />
         </div>
     )

@@ -18,9 +18,8 @@ const ListProfile = () => {
   };
 
   return (
-    <div>
-
-      {/* <button className="bg-blue-500 px-4 py-2 text-white rounded" onClick={() => setIsModalOpen(true)}>+ Create Cluster</button> */}
+    <div className="w-full">
+      <button className="px-4 py-10 text-white rounded-2xl border-dashed border-2 w-full  text-2xl" onClick={() => setIsModalOpen(true)}>+ Create Cluster</button>
       <ClusterModal isOpen={isModalOpen} setIsOpen={setIsModalOpen} createCluster={createCluster} />
     </div>
   );
