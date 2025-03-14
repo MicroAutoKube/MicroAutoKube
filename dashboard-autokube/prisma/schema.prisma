@@ -1,5 +1,5 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
   binaryTargets = ["native", "linux-musl"]
 }
 
@@ -9,45 +9,170 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
+  id        String           @id @default(cuid())
+  email     String           @unique
   name      String?
   password  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  clusters  ClusterProfile[] // One user can have multiple clusters
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  clusters  ClusterProfile[]
 }
 
 model ClusterProfile {
-  id                  String   @id @default(cuid())
-  name                String   @unique
-  kubernetesVersion   String   // Kubernetes version (e.g., 1.26.3)
-  containerRuntime    ContainerRuntime // Enum (docker, containerd, etc.)
-  containerVersion    String   // Container runtime version (e.g., 20.10.7)
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  id                String           @id @default(cuid())
+  name              String           @unique
+  kubernetesVersion String
+  containerRuntime  ContainerRuntime
+  containerVersion  String
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
 
-  userId              String
-  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  nodes               Node[] // A cluster can have multiple nodes (hosts)
+  userId        String
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  nodes         Node[]
+  clusterConfig ClusterConfig?
 }
 
 model Node {
-  id         String   @id @default(cuid())
-  hostname   String   @unique
-  ipAddress  String   @unique
-  authType   AuthType // Enum for authentication type
-  username   String
-  password   String?  // Nullable: Used if authType = PASSWORD
-  sshKey     String?  // Nullable: Used if authType = SSH_KEY
-  role       NodeRole // Node's role in the cluster (Master, Worker, etc.)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id        String   @id @default(cuid())
+  hostname  String   @unique
+  ipAddress String   @unique
+  authType  AuthType
+  username  String
+  password  String? // Required if authType = PASSWORD
+  sshKey    String? // Required if authType = SSH_KEY
+  role      NodeRole
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  clusterId  String
-  cluster    ClusterProfile @relation(fields: [clusterId], references: [id], onDelete: Cascade)
+  clusterId String
+  cluster   ClusterProfile @relation(fields: [clusterId], references: [id], onDelete: Cascade)
+}
+
+model ClusterConfig {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  clusterProfileId String         @unique
+  clusterProfile   ClusterProfile @relation(fields: [clusterProfileId], references: [id], onDelete: Cascade)
+
+  helm                 HelmConfig?
+  registry             RegistryConfig?
+  metrics              MetricsConfig?
+  localPathProvisioner LocalPathProvisionerConfig?
+  k8sCluster           K8sClusterConfig?
+  globalCluster        GlobalClusterConfig?
+}
+
+model HelmConfig {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  enabled   Boolean  @default(false)
+
+  clusterConfigId String        @unique
+  clusterConfig   ClusterConfig @relation(fields: [clusterConfigId], references: [id], onDelete: Cascade)
+}
+
+model RegistryConfig {
+  id           String   @id @default(cuid())
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  enabled      Boolean  @default(false)
+  namespace    String   @default("kube-system")
+  storageClass String?  @default("")
+  diskSize     String   @default("10Gi")
+
+  clusterConfigId String        @unique
+  clusterConfig   ClusterConfig @relation(fields: [clusterConfigId], references: [id], onDelete: Cascade)
+}
+
+model MetricsConfig {
+  id                          String                        @id @default(cuid())
+  createdAt                   DateTime                      @default(now())
+  updatedAt                   DateTime                      @updatedAt
+  enabled                     Boolean                       @default(false)
+  containerPort               Int?                          @default(10250)
+  kubeletInsecureTls          Boolean?                      @default(false)
+  metricResolution            Int?                          @default(15)
+  kubeletPreferredAddressType KubeletPreferredAddressTypes?
+  hostNetwork                 Boolean?                      @default(false)
+  replicas                    Int?                          @default(1)
+
+  clusterConfigId String        @unique
+  clusterConfig   ClusterConfig @relation(fields: [clusterConfigId], references: [id], onDelete: Cascade)
+}
+
+model LocalPathProvisionerConfig {
+  id              String   @id @default(cuid())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  enabled         Boolean  @default(false)
+  namespace       String?  @default("local-path-storage")
+  storageClass    String?  @default("local-path")
+  reclaim_policy  String?  @default("Delete")
+  claimRoot       String?  @default("/opt/local-path-provisioner/")
+  debug           Boolean? @default(false)
+  imageRepo       String?  @default("{{ docker_image_repo }}/rancher/local-path-provisioner")
+  imageTag        String?  @default("v0.0.24")
+  helperImageRepo String?  @default("busybox")
+  helperImageTag  String?  @default("latest")
+
+  clusterConfigId String        @unique
+  clusterConfig   ClusterConfig @relation(fields: [clusterConfigId], references: [id], onDelete: Cascade)
+}
+
+model GlobalClusterConfig {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  binDir    String?  @default("/usr/local/bin")
+
+  clusterConfigId             String                       @unique
+  clusterConfig               ClusterConfig                @relation(fields: [clusterConfigId], references: [id], onDelete: Cascade)
+  LoadbalancerApiserverConfig LoadbalancerApiserverConfig?
+}
+
+model LoadbalancerApiserverConfig {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  domain        String?  @default("elb.some.domain")
+  domainEnabled Boolean? @default(false)
+
+  address String?
+  port    Int?
+
+  localPort        Int? @default(6443)
+  healthcheck_port Int? @default(8081)
+
+  globalClusterConfigId String              @unique
+  globalClusterConfig   GlobalClusterConfig @relation(fields: [globalClusterConfigId], references: [id], onDelete: Cascade)
+}
+
+model K8sClusterConfig {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  configDir String?  @default("/etc/kubernetes")
+  scriptDir String? @default("{{ bin_dir }}/kubernetes-scripts")
+  manifestDir String? @default("{{ kube_config_dir }}/manifests")
+  certDir String? @default("{{ kube_config_dir }}/ssl")
+  tokenDir String? @default("{{ kube_config_dir }}/tokens")
+  apiAnonymousAuth Boolean? @default(true)
+  version       String?  @default("v1.32.0")
+  localReleaseDir String?  @default("/tmp/releases")
+  retryStagger  Int?     @default(5)
+  owner         String?  @default("kube")
+  certGroup     String?  @default("kube-cert")
+  logLevel      Int?  @default(2)
+  credentialsDir String?  @default("{{ inventory_dir }}/credentials")
+  containerManager ContainerRuntime? @default(CONTAINERD)
+
+  clusterConfigId String        @unique
+  clusterConfig   ClusterConfig @relation(fields: [clusterConfigId], references: [id], onDelete: Cascade)
 }
 
 enum AuthType {
@@ -66,4 +191,10 @@ enum ContainerRuntime {
   DOCKER
   CONTAINERD
   CRI_O
+}
+
+enum KubeletPreferredAddressTypes {
+  InternalIP
+  ExternalIP
+  Hostname
 }
