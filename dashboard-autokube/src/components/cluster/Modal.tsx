@@ -7,7 +7,7 @@ import { FaPlus, FaTimes, FaExclamationCircle, FaTrash } from "react-icons/fa";
 interface ClusterModalProps {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
-  createCluster: (payload: ClusterPayload) => Promise<void>;
+  createCluster: (payload: ClusterPayload) => Promise<boolean>;
 }
 
 
@@ -87,8 +87,10 @@ const ClusterModal = ({ isOpen, setIsOpen, createCluster }: ClusterModalProps) =
       })),
     };
 
-    await createCluster(payload);
-    handleCancel();
+    const success = await createCluster(payload);
+    if (success) {
+      handleCancel();
+    } 
   };
 
   const handleCancel = () => {
@@ -117,7 +119,7 @@ const ClusterModal = ({ isOpen, setIsOpen, createCluster }: ClusterModalProps) =
 
   return (
     <Transition appear show={isOpen} as={Fragment}>
-      <Dialog as="div" className="relative z-20" onClose={handleCancel}>
+      <Dialog as="div" className="relative z-50" onClose={handleCancel}>
         <Transition.Child
           as={Fragment}
           enter="ease-out duration-300"
@@ -127,10 +129,11 @@ const ClusterModal = ({ isOpen, setIsOpen, createCluster }: ClusterModalProps) =
           leaveFrom="opacity-100"
           leaveTo="opacity-0"
         >
-          <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-md" />
+          <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-md z-10" />
+
         </Transition.Child>
 
-        <div className="fixed inset-0 flex items-center justify-center">
+        <div className="fixed inset-0 flex items-center justify-center z-30">
           <Transition.Child
             as={Fragment}
             enter="ease-out duration-300"

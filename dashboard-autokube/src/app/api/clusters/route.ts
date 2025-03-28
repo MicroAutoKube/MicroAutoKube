@@ -4,6 +4,33 @@ import { AuthType, ContainerRuntime, NodeRole } from "@prisma/client";
 import { getServerSession } from "next-auth";
 import { decodeBase64SSHKey, encryptSSHKey } from "@/utils";
 
+export async function GET(req: NextRequest) {
+    try {
+
+        const session = await getServerSession();
+        if (!session?.user?.email) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+
+        const clusters = await prisma.clusterProfile.findMany({
+            where: { userId: session.user.id },
+            include: {
+                clusterConfig: true,
+                nodes: true,
+            }
+        });
+
+        return NextResponse.json(clusters, { status: 200 });
+    }
+    catch (error) {
+        console.error("Error fetching clusters:", error);
+        return NextResponse.json({ error: "Failed to fetch clusters" }, { status: 500 });
+    } finally {
+        await prisma.$disconnect();
+    }
+}
+
 export async function POST(req: NextRequest) {
     try {
         const {

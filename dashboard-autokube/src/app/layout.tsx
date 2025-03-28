@@ -4,7 +4,8 @@ import "./globals.css";
 import { prisma } from "@/lib/server";
 import { getServerSession } from 'next-auth'
 import {SessionProvider} from '@/components/provider'
-
+import {  ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -34,7 +35,7 @@ export default async function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
        <SessionProvider session={session}>{children}</SessionProvider>
-        
+       <ToastContainer position="top-right" autoClose={3000} />
       </body>
     </html>
   );

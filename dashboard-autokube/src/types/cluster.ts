@@ -1,3 +1,5 @@
+import type { Prisma } from '@prisma/client';
+
 export interface ClusterPayload {
   clusterName: string;
   toolInstallation: string;
@@ -24,3 +26,9 @@ export interface Node {
   password: string;
   sshKey: File | String | null;
 }
+
+
+
+export type ClusterProfileWithNodes = Prisma.ClusterProfileGetPayload<{
+  include: { nodes: true, clusterConfig: true };
+}>;
