@@ -1,6 +1,7 @@
 "use client";
 import { ClusterProfileWithNodes } from "@/types/cluster";
 import React, { useState } from "react";
+import { FaClone, FaRunning, FaSave } from "react-icons/fa";
 import { toast } from "react-toastify";
 
 const Configuration = ({ cluster }: { cluster: ClusterProfileWithNodes }) => {
@@ -60,7 +61,37 @@ const Configuration = ({ cluster }: { cluster: ClusterProfileWithNodes }) => {
       toast.error("❌ An error occurred while saving configuration.");
     }
   };
+
+  const handleResetConfig = () => {
+    setHelmEnabled(cluster.clusterConfig?.helm?.enabled ?? false);
+    setRegistry({
+      enabled: cluster.clusterConfig?.registry?.enabled ?? false,
+      namespace: cluster.clusterConfig?.registry?.namespace ?? "kube-system",
+      storageClass: cluster.clusterConfig?.registry?.storageClass ?? "",
+      diskSize: cluster.clusterConfig?.registry?.diskSize ?? "10Gi",
+    });
+    setMetrics({
+      enabled: cluster.clusterConfig?.metrics?.enabled ?? false,
+      containerPort: cluster.clusterConfig?.metrics?.containerPort ?? 10250,
+      kubeletInsecureTls: cluster.clusterConfig?.metrics?.kubeletInsecureTls ?? false,
+      metricResolution: cluster.clusterConfig?.metrics?.metricResolution ?? 15,
+      hostNetwork: cluster.clusterConfig?.metrics?.hostNetwork ?? false,
+      replicas: cluster.clusterConfig?.metrics?.replicas ?? 1,
+    });
+    setLocalPathProvisioner({
+      enabled: cluster.clusterConfig?.localPathProvisioner?.enabled ?? false,
+      namespace: cluster.clusterConfig?.localPathProvisioner?.namespace ?? "local-path-storage",
+      storageClass: cluster.clusterConfig?.localPathProvisioner?.storageClass ?? "local-path",
+      reclaim_policy: cluster.clusterConfig?.localPathProvisioner?.reclaim_policy ?? "Delete",
+      claimRoot: cluster.clusterConfig?.localPathProvisioner?.claimRoot ?? "/opt/local-path-provisioner/",
+      debug: cluster.clusterConfig?.localPathProvisioner?.debug ?? false,
+    });
+  }
   
+
+  const handleRunScript = ()=>{
+
+  }
 
   return (
     <div className="flex-1 px-10 py-6 text-white w-full">
@@ -246,12 +277,36 @@ const Configuration = ({ cluster }: { cluster: ClusterProfileWithNodes }) => {
         </div>
       </div>
 
+      <div className="flex gap-3">
+      <button
+        onClick={handleResetConfig}
+        className="mt-4 flex items-center gap-2 bg-gray-600 hover:bg-gray-700 text-white py-2 px-6 rounded-md transition"
+      >
+        <FaClone/>
+        Reset Configuration
+      </button>
+
       <button
         onClick={handleSaveConfig}
-        className="mt-4 bg-blue-600 hover:bg-blue-700 text-white py-2 px-6 rounded-md transition"
+        className="mt-4 flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-2 px-6 rounded-md transition"
       >
+        <FaSave />
         Save Configuration
       </button>
+
+
+      <button
+        onClick={handleRunScript}
+        className="mt-4 flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white py-2 px-6 rounded-md transition"
+      >
+        <FaRunning/>
+        Run Script
+      </button>
+      
+
+      </div>
+
+      
     </div>
   );
 };
