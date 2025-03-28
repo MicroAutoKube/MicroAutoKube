@@ -2,15 +2,19 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/server";
 import { getServerSession } from "next-auth";
 
-export async function PUT(req: NextRequest, { params }: { params: { clusterId: string } }) {
+export async function PUT(req: NextRequest) {
   try {
     const session = await getServerSession();
 
     if (!session?.user?.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const url = new URL(req.url);
+    const clusterId = url.pathname.split("/").pop(); // Extract from /clusters/config/[clusterId]
 
-    const clusterId = params.clusterId;
+    if (!clusterId) {
+      return NextResponse.json({ error: "Missing cluster ID" }, { status: 400 });
+    }
     const configData = await req.json();
 
     const user = await prisma.user.findUnique({
