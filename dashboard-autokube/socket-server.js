@@ -109,6 +109,16 @@ function initializeSocket(server) {
       }
     });
 
+    socket.on("request-logs", (clusterId) => {
+      const logFilePath = path.resolve(__dirname, `logs/deploy-${clusterId}.log`);
+      if (fs.existsSync(logFilePath)) {
+        const logs = fs.readFileSync(logFilePath, "utf8").split("\n").filter(Boolean);
+        logs.forEach((line) => socket.emit("log", line));
+      }
+    });
+
+    
+    
     socket.on("disconnect", () => {
       console.log("❌ Client disconnected");
     });

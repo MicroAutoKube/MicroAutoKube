@@ -16,6 +16,9 @@ export default function TerminalLog({ id: clusterId }: { id: string }) {
       setLogs((prev) => [...prev, msg]);
     });
 
+      // 👇 fetch logs if file exists
+    s.emit("request-logs", clusterId);
+
     const handleTrigger = (e: CustomEvent) => {
       const targetId = e.detail;
       if (targetId === clusterId) {
@@ -42,7 +45,7 @@ export default function TerminalLog({ id: clusterId }: { id: string }) {
     <div className="p-4">
       <div
         ref={terminalRef}
-        className="mt-4 bg-black text-green-400 font-mono p-4 rounded h-96 overflow-y-auto whitespace-pre-wrap border border-gray-700 shadow-inner"
+        className="mt-4 bg-black text-green-400 font-mono p-4 rounded h-screen overflow-y-auto whitespace-pre-wrap border border-gray-700 shadow-inner"
       >
         {logs.map((line, idx) => {
           const isError =
