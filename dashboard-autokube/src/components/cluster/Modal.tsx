@@ -1,8 +1,10 @@
 "use client";
 import { ClusterPayload } from "@/types/cluster";
+import { clusterSchema } from "@/utils/clusterSchema";
 import { Dialog, Transition } from "@headlessui/react";
 import { useState, Fragment } from "react";
 import { FaPlus, FaTimes, FaExclamationCircle, FaTrash } from "react-icons/fa";
+import { toast } from "react-toastify";
 
 interface ClusterModalProps {
   isOpen: boolean;
@@ -87,11 +89,19 @@ const ClusterModal = ({ isOpen, setIsOpen, createCluster }: ClusterModalProps) =
       })),
     };
 
+    const validation = clusterSchema.safeParse(payload);
+    if (!validation.success) {
+      const firstError = validation.error.errors[0];
+      toast.error(`❌ ${firstError.message}`);
+      return;
+    }
+
     const success = await createCluster(payload);
     if (success) {
       handleCancel();
-    } 
+    }
   };
+
 
   const handleCancel = () => {
     setClusterName("");
@@ -230,11 +240,17 @@ const ClusterModal = ({ isOpen, setIsOpen, createCluster }: ClusterModalProps) =
                 )}
 
                 {globalAuthMode === "ssh_key" && (
-                  <input
-                    type="file"
-                    className="w-full p-2 mt-2 bg-gray-800 text-white border border-gray-700 rounded"
-                    onChange={(e) => setGlobalSSHKey(e.target.files?.[0] || null)}
-                  />
+                  <>
+                    <input
+                      type="file"
+                      accept=".pem,.key,.priv,text/plain"
+                      className="w-full p-2 mt-2 bg-gray-800 text-white border border-gray-700 rounded"
+                      onChange={(e) => setGlobalSSHKey(e.target.files?.[0] || null)}
+                    />
+                    <small className="text-gray-400">Accepted: .pem, .key, .priv</small>
+
+                  </>
+
                 )}
               </div>
 
@@ -295,11 +311,18 @@ const ClusterModal = ({ isOpen, setIsOpen, createCluster }: ClusterModalProps) =
                     )}
 
                     {node.authMode === "ssh_key" && (
-                      <input
-                        type="file"
-                        className="w-full p-2 mt-2 bg-gray-800 text-white border border-gray-700 rounded"
-                        onChange={(e) => setGlobalSSHKey(e.target.files?.[0] || null)}
-                      />
+                      <>
+                        <input
+                          type="file"
+                          accept=".pem,.key,.priv,text/plain"
+                          className="w-full p-2 mt-2 bg-gray-800 text-white border border-gray-700 rounded"
+                          onChange={(e) => setGlobalSSHKey(e.target.files?.[0] || null)}
+                        />
+
+                        <small className="text-gray-400">Accepted: .pem, .key, .priv</small>
+
+                      </>
+
                     )}
 
                   </div>

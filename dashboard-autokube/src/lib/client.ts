@@ -1,4 +1,4 @@
 import bcrypt from "./bcrypt";
 import crypto from "./crypto-js";
-
-export { bcrypt, crypto };
+import zod from "./zod"
+export { bcrypt, crypto,zod };
