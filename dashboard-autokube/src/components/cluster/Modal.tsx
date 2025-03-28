@@ -1,10 +1,12 @@
 "use client";
+import { containerdVersionsKubespray, dockerVersionsKubespray, kubernetesVersionsKubespray } from "@/constants";
 import { ClusterPayload } from "@/types/cluster";
 import { clusterSchema } from "@/utils/clusterSchema";
 import { Dialog, Transition } from "@headlessui/react";
 import { useState, Fragment } from "react";
 import { FaPlus, FaTimes, FaExclamationCircle, FaTrash } from "react-icons/fa";
 import { toast } from "react-toastify";
+import Dropzone from "../common/Dropzone";
 
 interface ClusterModalProps {
   isOpen: boolean;
@@ -18,7 +20,7 @@ const ClusterModal = ({ isOpen, setIsOpen, createCluster }: ClusterModalProps) =
   const [clusterName, setClusterName] = useState("");
   const [toolInstallation, setToolInstallation] = useState("kubespray");
   const [kubernetesVersion, setKubernetesVersion] = useState("");
-  const [containerRuntime, setContainerRuntime] = useState("DOCKER");
+  const [containerRuntime, setContainerRuntime] = useState("CONTAINERD");
   const [containerVersion, setContainerVersion] = useState("");
   const [globalAuthMode, setGlobalAuthMode] = useState("username_password");
   const [globalUsername, setGlobalUsername] = useState("");
@@ -106,7 +108,7 @@ const ClusterModal = ({ isOpen, setIsOpen, createCluster }: ClusterModalProps) =
   const handleCancel = () => {
     setClusterName("");
     setKubernetesVersion("");
-    setContainerRuntime("DOCKER");
+    setContainerRuntime("CONTAINERD");
     setContainerVersion("");
     setGlobalAuthMode("username_password");
     setGlobalUsername("");
@@ -183,12 +185,19 @@ const ClusterModal = ({ isOpen, setIsOpen, createCluster }: ClusterModalProps) =
               </div>
 
               {/* Kubernetes Version */}
-              <input
+              <select
                 className="w-full p-2 mt-4 rounded bg-gray-800 text-white border border-gray-700"
-                placeholder="Kubernetes Version"
                 value={kubernetesVersion}
                 onChange={(e) => setKubernetesVersion(e.target.value)}
-              />
+              >
+                <option value="" disabled>Select Kubernetes Version</option>
+                {kubernetesVersionsKubespray.map((version) => (
+                  <option key={version} value={version}>
+                    {version}
+                  </option>
+                ))}
+              </select>
+
 
               {/* Container Runtime Selection */}
               <select
@@ -198,16 +207,38 @@ const ClusterModal = ({ isOpen, setIsOpen, createCluster }: ClusterModalProps) =
               >
                 <option value="DOCKER">Docker</option>
                 <option value="CONTAINERD">Containerd</option>
-                <option value="CRI_O">CRI-O</option>
               </select>
 
               {/* Container Version */}
-              <input
-                className="w-full p-2 mt-4 rounded bg-gray-800 text-white border border-gray-700"
-                placeholder="Container Version"
-                value={containerVersion}
-                onChange={(e) => setContainerVersion(e.target.value)}
-              />
+              {containerRuntime === "DOCKER" && (
+                <select
+                  className="w-full p-2 mt-4 rounded bg-gray-800 text-white border border-gray-700"
+                  value={containerVersion}
+                  onChange={(e) => setContainerVersion(e.target.value)}
+                >
+                  <option value="" disabled>Select Docker Version</option>
+                  {dockerVersionsKubespray.map((version) => (
+                    <option key={version} value={version}>
+                      {version}
+                    </option>
+                  ))}
+                </select>
+              )}
+
+              {containerRuntime === "CONTAINERD" && (
+                <select
+                  className="w-full p-2 mt-4 rounded bg-gray-800 text-white border border-gray-700"
+                  value={containerVersion}
+                  onChange={(e) => setContainerVersion(e.target.value)}
+                >
+                  <option value="" disabled>Select Containerd Version</option>
+                  {containerdVersionsKubespray.map((version) => (
+                    <option key={version} value={version}>
+                      {version}
+                    </option>
+                  ))}
+                </select>
+              )}
 
               {/* Global Authentication */}
               <div className="mt-4">
@@ -241,17 +272,14 @@ const ClusterModal = ({ isOpen, setIsOpen, createCluster }: ClusterModalProps) =
 
                 {globalAuthMode === "ssh_key" && (
                   <>
-                    <input
-                      type="file"
-                      accept=".pem,.key,.priv,text/plain"
-                      className="w-full p-2 mt-2 bg-gray-800 text-white border border-gray-700 rounded"
-                      onChange={(e) => setGlobalSSHKey(e.target.files?.[0] || null)}
+                    <Dropzone
+                      onFileAccepted={(file) => setGlobalSSHKey(file)}
+                      currentFile={globalSSHKey}
                     />
                     <small className="text-gray-400">Accepted: .pem, .key, .priv</small>
-
                   </>
-
                 )}
+
               </div>
 
               {/* Nodes */}
@@ -312,18 +340,14 @@ const ClusterModal = ({ isOpen, setIsOpen, createCluster }: ClusterModalProps) =
 
                     {node.authMode === "ssh_key" && (
                       <>
-                        <input
-                          type="file"
-                          accept=".pem,.key,.priv,text/plain"
-                          className="w-full p-2 mt-2 bg-gray-800 text-white border border-gray-700 rounded"
-                          onChange={(e) => setGlobalSSHKey(e.target.files?.[0] || null)}
+                        <Dropzone
+                          onFileAccepted={(file) => handleNodeChange(node.id, "sshKey", file)}
+                          currentFile={node.sshKey}
                         />
-
                         <small className="text-gray-400">Accepted: .pem, .key, .priv</small>
-
                       </>
-
                     )}
+
 
                   </div>
                   <button className="absolute top-4 right-4 text-red-400" onClick={() => removeNode(node.id)}>
