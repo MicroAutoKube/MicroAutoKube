@@ -190,7 +190,6 @@ enum NodeRole {
 enum ContainerRuntime {
   DOCKER
   CONTAINERD
-  CRI_O
 }
 
 enum KubeletPreferredAddressTypes {

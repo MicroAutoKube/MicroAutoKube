@@ -28,7 +28,18 @@ export interface Node {
 }
 
 
-
 export type ClusterProfileWithNodes = Prisma.ClusterProfileGetPayload<{
-  include: { nodes: true, clusterConfig: true };
+  include: {
+    nodes: true;
+    clusterConfig: {
+      include: {
+        helm: true;
+        registry: true;
+        metrics: true;
+        localPathProvisioner: true;
+        k8sCluster: true;
+        globalCluster: true;
+      };
+    };
+  };
 }>;

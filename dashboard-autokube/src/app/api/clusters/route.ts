@@ -23,9 +23,18 @@ export async function GET(req: NextRequest) {
                     userId: session.user.id,
                 },
                 include: {
-                    clusterConfig: true,
                     nodes: true,
-                },
+                    clusterConfig: {
+                        include: {
+                            helm: true,
+                            registry: true,
+                            metrics: true,
+                            localPathProvisioner: true,
+                            k8sCluster: true,
+                            globalCluster: true
+                        }
+                    }
+                }
             });
 
             if (!cluster) {
@@ -39,9 +48,18 @@ export async function GET(req: NextRequest) {
         const clusters = await prisma.clusterProfile.findMany({
             where: { userId: session.user.id },
             include: {
-                clusterConfig: true,
                 nodes: true,
-            },
+                clusterConfig: {
+                    include: {
+                        helm: true,
+                        registry: true,
+                        metrics: true,
+                        localPathProvisioner: true,
+                        k8sCluster: true,
+                        globalCluster: true
+                    }
+                }
+            }
         });
 
         return NextResponse.json(clusters, { status: 200 });

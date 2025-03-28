@@ -14,18 +14,10 @@ export default async function Page({
 
   return <div>
 
-    <SidebarButton icon={<FaArrowLeft />} text="Back" route="/dashboard" />
-
+    <div className="w-fit">
+      <SidebarButton icon={<FaArrowLeft />} text="Back" route="/dashboard" />
+    </div>
     <Mode id={id} />
-
-
-
-
-
-
-
-
-
 
   </div>
 }

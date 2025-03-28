@@ -31,13 +31,20 @@ const Mode = ({ id }: { id: string }) => {
     }, []);
 
   return (
-    <div className="flex">
+    <div className="grid grid-cols-7 min-h-screen">
+    {/* Sidebar Menu */}
+    <div className="col-span-1">
       <Menu mode={mode} setMode={setMode} />
-
-    
-    { mode === "configuration" && cluster && <Configuration cluster={cluster} />}
-      
     </div>
+  
+    {/* Main Content */}
+    <div className="col-span-6">
+      {mode === "configuration" && cluster && (
+        <Configuration cluster={cluster} />
+      )}
+    </div>
+  </div>
+  
   )
 }
 
