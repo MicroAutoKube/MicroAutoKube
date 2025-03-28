@@ -16,7 +16,7 @@ const Menu = ({
   };
 
   return (
-    <div className="flex flex-col items-start border rounded-xl px-2 min-w-[200px] mt-5">
+    <div className="flex flex-col items-start border rounded-xl px-2 min-w-[200px] h-fit mt-5">
       <button onClick={() => setMode('configuration')} className={getButtonClass('configuration')}>
         {mode === 'configuration' && "●"} Configuration
       </button>
