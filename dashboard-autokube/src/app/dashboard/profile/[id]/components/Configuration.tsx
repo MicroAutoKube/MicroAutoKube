@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { FaClone, FaRunning, FaSave } from "react-icons/fa";
 import { toast } from "react-toastify";
 
+
 const Configuration = ({ cluster }: { cluster: ClusterProfileWithNodes }) => {
   const [helmEnabled, setHelmEnabled] = useState(cluster.clusterConfig?.helm?.enabled ?? false);
   const [registry, setRegistry] = useState({

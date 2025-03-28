@@ -4,6 +4,7 @@ import Menu from "./Menu";
 import { toast } from "react-toastify";
 import { ClusterProfileWithNodes } from "@/types/cluster";
 import Configuration from "./Configuration";
+import TerminalLog from "./Logs";
 
 const Mode = ({ id }: { id: string }) => {
   const [mode, setMode] = useState("configuration");
@@ -42,6 +43,10 @@ const Mode = ({ id }: { id: string }) => {
       {mode === "configuration" && cluster && (
         <Configuration cluster={cluster} />
       )}
+      { mode === "logs" && cluster && (
+        <TerminalLog/>
+      )
+      }
     </div>
   </div>
   
