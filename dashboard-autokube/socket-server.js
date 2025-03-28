@@ -5,6 +5,9 @@ const fs = require("fs");
 
 let io = null;
 
+// Track running processes per cluster
+const runningProcesses = {}; // { [clusterId]: { py, ansible } }
+
 function initializeSocket(server) {
   if (io) return io;
 
@@ -16,23 +19,50 @@ function initializeSocket(server) {
   io.on("connection", (socket) => {
     console.log("✅ Client connected");
 
-    socket.on("run-script", (clusterId) => {
-      if (!clusterId) return;
-
+    // Join socket room based on cluster
+    socket.on("request-logs", (clusterId) => {
       const logFilePath = path.resolve(__dirname, `../logs/deploy-${clusterId}.log`);
-
-      const logAndEmit = (msg) => {
-        const clean = msg.toString().replace(/\r?\n$/, "");
-        fs.mkdirSync(path.dirname(logFilePath), { recursive: true });
-        fs.appendFileSync(logFilePath, clean + "\n");
-        socket.emit("log", clean);
-      };
-
-      // Send past logs (resume)
       if (fs.existsSync(logFilePath)) {
         const logs = fs.readFileSync(logFilePath, "utf8").split("\n").filter(Boolean);
         logs.forEach((line) => socket.emit("log", line));
       }
+
+      socket.join(clusterId); // Join room to receive real-time logs
+
+      // If process is running, reattach logs
+      const running = runningProcesses[clusterId];
+      if (running?.py) {
+        socket.emit("log", "📡 Re-attached to running Python script...");
+        running.py.stdout.on("data", (data) => {
+          io.to(clusterId).emit("log", `[python] ${data.toString()}`);
+        });
+        running.py.stderr.on("data", (data) => {
+          io.to(clusterId).emit("log", `[python stderr] ${data.toString()}`);
+        });
+      }
+
+      if (running?.ansible) {
+        socket.emit("log", "📡 Re-attached to running Ansible...");
+        running.ansible.stdout.on("data", (data) => {
+          io.to(clusterId).emit("log", `[ansible] ${data.toString()}`);
+        });
+        running.ansible.stderr.on("data", (data) => {
+          io.to(clusterId).emit("log", `[ansible stderr] ${data.toString()}`);
+        });
+      }
+    });
+
+    // When run-script is triggered
+    socket.on("run-script", (clusterId) => {
+      if (!clusterId) return;
+
+      const logFilePath = path.resolve(__dirname, `../logs/deploy-${clusterId}.log`);
+      const logAndEmit = (msg) => {
+        const clean = msg.toString().replace(/\r?\n$/, "");
+        fs.mkdirSync(path.dirname(logFilePath), { recursive: true });
+        fs.appendFileSync(logFilePath, clean + "\n");
+        io.to(clusterId).emit("log", clean);
+      };
 
       logAndEmit("📦 Starting deployment...");
 
@@ -82,6 +112,8 @@ function initializeSocket(server) {
         const pyScript = path.resolve(__dirname, "../scripts/myscript.py");
         const py = spawn("python3", [pyScript]);
 
+        runningProcesses[clusterId] = { py, ansible: null };
+
         py.stdout.on("data", emit("python"));
         py.stderr.on("data", emit("python stderr"));
 
@@ -100,28 +132,41 @@ function initializeSocket(server) {
           "-v",
         ]);
 
+        runningProcesses[clusterId].ansible = ansible;
+
         ansible.stdout.on("data", emit("ansible"));
         ansible.stderr.on("data", emit("ansible stderr"));
 
         ansible.on("close", (code) => {
           logAndEmit(`✅ Ansible finished (code ${code})`);
+          delete runningProcesses[clusterId]; // Cleanup
         });
       }
     });
 
-    socket.on("request-logs", (clusterId) => {
-      const logFilePath = path.resolve(__dirname, `logs/deploy-${clusterId}.log`);
-      if (fs.existsSync(logFilePath)) {
-        const logs = fs.readFileSync(logFilePath, "utf8").split("\n").filter(Boolean);
-        logs.forEach((line) => socket.emit("log", line));
-      }
-    });
-
-    
-    
     socket.on("disconnect", () => {
       console.log("❌ Client disconnected");
     });
+    socket.on("kill-script", (clusterId) => {
+      const processes = runningProcesses[clusterId];
+      if (!processes) {
+        socket.emit("log", `⚠️ No running script for cluster ${clusterId}`);
+        return;
+      }
+    
+      if (processes.py) {
+        processes.py.kill();
+        socket.emit("log", `🛑 Python script killed`);
+      }
+    
+      if (processes.ansible) {
+        processes.ansible.kill();
+        socket.emit("log", `🛑 Ansible process killed`);
+      }
+    
+      delete runningProcesses[clusterId];
+    });
+    
   });
 
   return io;
