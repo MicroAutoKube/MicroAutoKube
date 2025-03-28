@@ -1,6 +1,7 @@
 "use client";
 import { ClusterProfileWithNodes } from "@/types/cluster";
 import React, { useState } from "react";
+import { toast } from "react-toastify";
 
 const Configuration = ({ cluster }: { cluster: ClusterProfileWithNodes }) => {
   const [helmEnabled, setHelmEnabled] = useState(cluster.clusterConfig?.helm?.enabled ?? false);
@@ -26,12 +27,40 @@ const Configuration = ({ cluster }: { cluster: ClusterProfileWithNodes }) => {
     claimRoot: cluster.clusterConfig?.localPathProvisioner?.claimRoot ?? "/opt/local-path-provisioner/",
     debug: cluster.clusterConfig?.localPathProvisioner?.debug ?? false,
   });
-  const handleSaveConfig = () => {
-    const configUpdates = { helmEnabled, registry, metrics, localPathProvisioner };
 
-    console.log("Saving Config:", configUpdates);
-    // TODO: Add your API call here to save configuration
+  const handleSaveConfig = async () => {
+    const configUpdates = {
+      helm: { enabled: helmEnabled },
+      registry,
+      metrics,
+      localPathProvisioner,
+    };
+  
+    try {
+      const res = await fetch(`/api/clusters/config/${cluster.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(configUpdates),
+      });
+  
+      if (!res.ok) {
+        const error = await res.json();
+        console.error("Failed to save config:", error);
+        toast.error("❌ Failed to save configuration.");
+        return;
+      }
+  
+      const result = await res.json();
+      console.log("✅ Configuration saved:", result);
+      toast.success("✅ Configuration saved successfully!");
+    } catch (err) {
+      console.error("API error:", err);
+      toast.error("❌ An error occurred while saving configuration.");
+    }
   };
+  
 
   return (
     <div className="flex-1 px-10 py-6 text-white w-full">
