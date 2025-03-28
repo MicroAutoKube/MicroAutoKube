@@ -71,12 +71,29 @@ export default function TerminalLog({ id: clusterId }: { id: string }) {
                 })}
 
             </div>
+
+            <div className="flex gap-10 mt-10">
+
             <button
                 onClick={() => socket?.emit("kill-script", clusterId)}
-                className="bg-red-600 hover:bg-red-700 text-white px-4 mt-10 py-2 rounded"
+                className="bg-red-600 hover:bg-red-700 text-white px-4  py-2 rounded"
             >
                 Kill Script
             </button>
+
+            <button
+                onClick={() => {
+                    socket?.emit("clear-logs", clusterId);
+                    setLogs([]); // clear logs from UI
+                }}
+                className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded"
+            >
+                Clear Logs
+            </button>
+
+            </div>
+           
+
         </div>
     );
 }

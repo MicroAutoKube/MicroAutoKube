@@ -166,6 +166,21 @@ function initializeSocket(server) {
     
       delete runningProcesses[clusterId];
     });
+
+    socket.on("clear-logs", (clusterId) => {
+      const logFilePath = path.resolve(__dirname, `../logs/deploy-${clusterId}.log`);
+      try {
+        if (fs.existsSync(logFilePath)) {
+          fs.unlinkSync(logFilePath);
+          socket.emit("log", `🧹 Logs cleared for cluster ${clusterId}`);
+        } else {
+          socket.emit("log", `⚠️ No logs to clear for cluster ${clusterId}`);
+        }
+      } catch (err) {
+        socket.emit("log", `❌ Failed to clear logs: ${err.message}`);
+      }
+    });
+    
     
   });
 

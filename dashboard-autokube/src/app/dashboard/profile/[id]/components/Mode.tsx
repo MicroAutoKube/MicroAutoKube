@@ -32,7 +32,7 @@ const Mode = ({ id }: { id: string }) => {
     }, []);
 
   return (
-    <div className="grid grid-cols-7 min-h-screen">
+    <div className="grid grid-cols-7 min-h-[50vh]">
     {/* Sidebar Menu */}
     <div className="col-span-1">
       <Menu mode={mode} setMode={setMode} />
