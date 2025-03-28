@@ -20,6 +20,7 @@ export async function GET(req: NextRequest) {
                 nodes: true,
             }
         });
+        
 
         return NextResponse.json(clusters, { status: 200 });
     }

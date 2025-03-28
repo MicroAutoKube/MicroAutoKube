@@ -205,8 +205,8 @@ const ClusterModal = ({ isOpen, setIsOpen, createCluster }: ClusterModalProps) =
                 value={containerRuntime}
                 onChange={(e) => setContainerRuntime(e.target.value)}
               >
-                <option value="DOCKER">Docker</option>
                 <option value="CONTAINERD">Containerd</option>
+                <option value="DOCKER">Docker</option>
               </select>
 
               {/* Container Version */}
