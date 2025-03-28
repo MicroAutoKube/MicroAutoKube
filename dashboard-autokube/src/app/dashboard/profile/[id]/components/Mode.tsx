@@ -41,10 +41,11 @@ const Mode = ({ id }: { id: string }) => {
     {/* Main Content */}
     <div className="col-span-6">
       {mode === "configuration" && cluster && (
-        <Configuration cluster={cluster} />
+        <Configuration cluster={cluster} setMode={setMode} />
+
       )}
       { mode === "logs" && cluster && (
-        <TerminalLog/>
+        <TerminalLog id={id}/>
       )
       }
     </div>

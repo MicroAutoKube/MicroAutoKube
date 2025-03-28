@@ -5,7 +5,7 @@ import { FaClone, FaRunning, FaSave } from "react-icons/fa";
 import { toast } from "react-toastify";
 
 
-const Configuration = ({ cluster }: { cluster: ClusterProfileWithNodes }) => {
+const Configuration = ({ cluster, setMode }: { cluster: ClusterProfileWithNodes , setMode: (m: string) => void }) => {
   const [helmEnabled, setHelmEnabled] = useState(cluster.clusterConfig?.helm?.enabled ?? false);
   const [registry, setRegistry] = useState({
     enabled: cluster.clusterConfig?.registry?.enabled ?? false,
@@ -90,9 +90,14 @@ const Configuration = ({ cluster }: { cluster: ClusterProfileWithNodes }) => {
   }
   
 
-  const handleRunScript = ()=>{
-
-  }
+  const handleRunScript = () => {
+    setMode("logs");
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent("trigger-run-script", { detail: cluster.id }));
+    }, 100);
+  };
+  
+  
 
   return (
     <div className="flex-1 px-10 py-6 text-white w-full">
