@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { prisma } from "@/lib";
+import { prisma } from "@/lib/server";
 import { getServerSession } from 'next-auth'
 import {SessionProvider} from '@/components/provider'
 

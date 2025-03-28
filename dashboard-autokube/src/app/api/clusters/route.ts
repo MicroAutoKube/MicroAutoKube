@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from '@/lib';
+import { prisma } from '@/lib/server';
 import { AuthType, ContainerRuntime, NodeRole } from "@prisma/client";
 import { getServerSession } from "next-auth";
 import { decodeBase64SSHKey, encryptSSHKey } from "@/utils";

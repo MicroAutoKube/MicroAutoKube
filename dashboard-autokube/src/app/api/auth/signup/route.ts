@@ -1,6 +1,7 @@
 
 
-import { prisma , bcrypt } from '@/lib'
+import { prisma  } from '@/lib/server'
+import { bcrypt } from '@/lib/client'
 
 interface SignupRequest {
   email: string;

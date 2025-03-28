@@ -1,4 +1,4 @@
-import { bcrypt , crypto } from '@/lib';
+import { bcrypt , crypto} from '@/lib/client';
 
 export const fileToBase64 = (file: File): Promise<string> =>
     new Promise((resolve, reject) => {
