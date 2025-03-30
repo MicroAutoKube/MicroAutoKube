@@ -12,8 +12,6 @@ export default function TerminalLog({ id: clusterId }: { id: string }) {
         const s = io({
             path: "/api/socket",
             transports: ["websocket"],
-            forceNew: true,
-            reconnectionAttempts: 3,
         });
         setSocket(s);
 
