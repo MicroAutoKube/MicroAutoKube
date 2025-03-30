@@ -161,11 +161,15 @@ function initializeSocket(server) {
 
         py.on('close', (code) => {
           logAndEmit(clusterId, `🐍 Python script finished (code ${code})`);
-          runAnsible();
+          logAndEmit(clusterId, `🚀 Triggering Ansible now...`);
+          runAnsible(); 
         });
+        
       }
 
       function runAnsible() {
+        logAndEmit(clusterId, `🧰 Starting Ansible...`);
+      
         const ansible = spawn('ansible-playbook', [
           '-i',
           path.join(basePath, 'kubespray/inventory/mycluster/'),
@@ -173,15 +177,16 @@ function initializeSocket(server) {
           '-b',
           '-v',
         ]);
-
+      
         runningProcesses[clusterId].ansible = ansible;
         attachProcessListeners(clusterId, ansible, 'ansible');
-
+      
         ansible.on('close', (code) => {
           logAndEmit(clusterId, `✅ Ansible finished (code ${code})`);
           delete runningProcesses[clusterId];
         });
       }
+      
     });
 
     socket.on('kill-script', (clusterId) => {
