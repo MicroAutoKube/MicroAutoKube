@@ -6,7 +6,7 @@ import { io } from "socket.io-client";
 export default function TerminalLog({ id: clusterId }: { id: string }) {
     const [logs, setLogs] = useState<string[]>([]);
     const [socket, setSocket] = useState<any>(null);
-    const [followScroll, setFollowScroll] = useState(true); 
+    const [followScroll, setFollowScroll] = useState(true);
     const terminalRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -38,14 +38,14 @@ export default function TerminalLog({ id: clusterId }: { id: string }) {
     }, []);
 
     useEffect(() => {
-        if (!followScroll) return; 
+        if (!followScroll) return;
         const terminal = terminalRef.current;
         if (!terminal) return;
 
         requestAnimationFrame(() => {
             terminal.scrollTop = terminal.scrollHeight;
         });
-    }, [logs, followScroll]); 
+    }, [logs, followScroll]);
 
     return (
         <div className="p-4">
@@ -62,8 +62,8 @@ export default function TerminalLog({ id: clusterId }: { id: string }) {
                     const lineColor = isError
                         ? "text-red-400"
                         : isSuccess
-                        ? "text-green-400"
-                        : "";
+                            ? "text-green-400"
+                            : "";
 
                     return (
                         <div key={idx} className={lineColor}>
@@ -75,10 +75,27 @@ export default function TerminalLog({ id: clusterId }: { id: string }) {
 
             <div className="flex flex-wrap gap-4 mt-10">
             <button
-                    onClick={() => setFollowScroll((prev) => !prev)} 
+                    onClick={() => {
+                        const blob = new Blob([logs.join("\n")], { type: "text/plain;charset=utf-8" });
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement("a");
+                        a.href = url;
+                        a.download = `cluster-${clusterId}-logs.txt`;
+                        document.body.appendChild(a);
+                        a.click();
+                        a.remove();
+                        window.URL.revokeObjectURL(url);
+                    }}
+                    className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded"
+                >
+                    📥 Download Logs
+                </button>
+                
+                <button
+                    onClick={() => setFollowScroll((prev) => !prev)}
                     className="bg-blue-500 hover:bg-blue-700 text-white px-4 py-2 rounded"
                 >
-                    {followScroll ? "🛑 Stop Scroll" : "📜 Follow Scroll"} 
+                    {followScroll ? "🛑 Stop Scroll" : "📜 Follow Scroll"}
                 </button>
 
                 <button
@@ -99,6 +116,9 @@ export default function TerminalLog({ id: clusterId }: { id: string }) {
                 </button>
 
                 
+
+
+
             </div>
         </div>
     );

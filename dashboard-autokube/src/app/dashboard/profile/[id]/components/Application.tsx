@@ -17,37 +17,48 @@ const appList = [
 
 const Application = ({ cluster }: { cluster: ClusterProfileWithNodes }) => {
   const [statusMap, setStatusMap] = useState<Record<string, boolean>>({});
-
-  if (!cluster.ready) {
-    return <p className="text-center text-gray-500 text-3xl font-bold mt-8">⏳ Cluster is not ready yet...</p>;
-  }
-
   const master = cluster.nodes.find(n => n.role === 'MASTER');
   const ip = master?.ipAddress || '0.0.0.0';
 
-  // Ping each app port to check availability
   useEffect(() => {
+    if (!cluster.ready) return;
+
     const checkStatuses = async () => {
       const results: Record<string, boolean> = {};
 
       await Promise.all(
-        appList.map(async app => {
-          const url = `http://${ip}:${app.port}`;
-          try {
-            const res = await fetch(`/api/ping-app?url=${encodeURIComponent(url)}`);
-            const data = await res.json();
-            results[app.key] = data.reachable;
-          } catch {
-            results[app.key] = false;
-          }
-        })
+        appList
+          .filter(app => {
+            if (app.key === "kubesphere") {
+              return cluster.clusterApp?.kubesphere?.enabled;
+            }
+            return false;
+          })
+          .map(async app => {
+            const url = `http://${ip}:${app.port}`;
+            try {
+              const res = await fetch(`/api/ping-app?url=${encodeURIComponent(url)}`);
+              const data = await res.json();
+              results[app.key] = data.reachable;
+            } catch {
+              results[app.key] = false;
+            }
+          })
       );
 
       setStatusMap(results);
     };
 
     checkStatuses();
-  }, [ip]);
+  }, [ip, cluster]);
+
+  if (!cluster.ready) {
+    return (
+      <p className="text-center text-gray-500 text-3xl font-bold mt-8">
+        ⏳ Cluster is not ready yet...
+      </p>
+    );
+  }
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 p-6">
@@ -56,7 +67,7 @@ const Application = ({ cluster }: { cluster: ClusterProfileWithNodes }) => {
           if (app.key === "kubesphere") {
             return cluster.clusterApp?.kubesphere?.enabled;
           }
-          return false; // You can apply filters per app later
+          return false;
         })
         .map(app => {
           const url = `http://${ip}:${app.port}`;
@@ -73,7 +84,9 @@ const Application = ({ cluster }: { cluster: ClusterProfileWithNodes }) => {
                   ● {isOnline ? 'Online' : 'Offline'}
                 </span>
               </div>
-              <div className="text-sm text-gray-300 mb-2">IP : {ip}:{app.port}</div>
+              <div className="text-sm text-gray-300 mb-2">
+                IP : {ip}:{app.port}
+              </div>
               <a
                 href={url}
                 target="_blank"
