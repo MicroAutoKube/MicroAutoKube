@@ -156,20 +156,26 @@ function initializeSocket(server) {
         const python = path.join(venvPath, 'bin/python');
 
         const py = spawn(python, [pyScript, nextAuthUrl, clusterId]);
+
         runningProcesses[clusterId] = { py, ansible: null };
         attachProcessListeners(clusterId, py, 'python');
+
+        logAndEmit(clusterId, `🐍 Python script started: ${python} ${pyScript}`);
+
+        py.on('error', (err) => {
+          logAndEmit(clusterId, `❌ Failed to start Python process: ${err.message}`);
+        });
 
         py.on('close', (code) => {
           logAndEmit(clusterId, `🐍 Python script finished (code ${code})`);
           logAndEmit(clusterId, `🚀 Triggering Ansible now...`);
-          runAnsible(); 
+          runAnsible();
         });
-        
       }
 
       function runAnsible() {
         logAndEmit(clusterId, `🧰 Starting Ansible...`);
-      
+
         const ansible = spawn('ansible-playbook', [
           '-i',
           path.join(basePath, 'kubespray/inventory/mycluster/'),
@@ -177,16 +183,20 @@ function initializeSocket(server) {
           '-b',
           '-v',
         ]);
-      
+
         runningProcesses[clusterId].ansible = ansible;
         attachProcessListeners(clusterId, ansible, 'ansible');
-      
+
+        ansible.on('error', (err) => {
+          logAndEmit(clusterId, `❌ Failed to start Ansible: ${err.message}`);
+        });
+
         ansible.on('close', (code) => {
           logAndEmit(clusterId, `✅ Ansible finished (code ${code})`);
           delete runningProcesses[clusterId];
         });
       }
-      
+
     });
 
     socket.on('kill-script', (clusterId) => {
