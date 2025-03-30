@@ -6,7 +6,8 @@
     "dev": "nodemon server.js",
     "build": "next build",
     "start": "NODE_ENV=production node server.js",
-    "lint": "next lint"
+    "lint": "next lint",
+    "eslint": "eslint ."
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.8.0",
