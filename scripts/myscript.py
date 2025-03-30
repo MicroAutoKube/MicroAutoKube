@@ -79,6 +79,8 @@ for node in cluster_data.get("nodes", []):
     role_counters.setdefault(role_key, 0)
     role_counters[role_key] += 1
     name = f"{role_key}{role_counters[role_key]}"
+    name = node["hostname"]
+
 
     ip = node["ipAddress"]
     user = node["username"]
@@ -132,19 +134,49 @@ with open(hosts_file, "w") as f:
 print("✅ hosts.yaml generated successfully!", flush=True)
 
 # 🔌 Run ansible ping to validate connectivity
-print("🔍 Running Ansible ping check...", flush=True)
-ping_cmd = [
-    "ansible",
-    "all",
-    "-i", str(hosts_file),
-    "-m", "ping",
-]
+# 🔒 Function to test SSH per node
+def test_ssh_connection(ip, user, password=None, key_path=None):
+    if key_path:
+        ssh_cmd = ["ssh", "-i", str(key_path), "-o", "StrictHostKeyChecking=no", f"{user}@{ip}", "echo SSH_OK"]
+    elif password:
+        ssh_cmd = ["sshpass", "-p", password, "ssh", "-o", "StrictHostKeyChecking=no", "-o", "PreferredAuthentications=password", f"{user}@{ip}", "echo SSH_OK"]
+    else:
+        ssh_cmd = ["ssh", "-o", "StrictHostKeyChecking=no", f"{user}@{ip}", "echo SSH_OK"]
 
+    try:
+        result = subprocess.run(ssh_cmd, check=True, capture_output=True, text=True, timeout=10)
+        return True, result.stdout.strip()
+    except subprocess.CalledProcessError as e:
+        return False, e.stderr.strip()
+    except Exception as ex:
+        return False, str(ex)
+
+
+# 🔍 Test SSH connection for each node before ansible
+print("🔍 Testing raw SSH connection to all nodes...", flush=True)
 try:
-    result = subprocess.run(ping_cmd, check=True, capture_output=True, text=True)
-    print("✅ Ansible ping successful:\n", result.stdout, flush=True)
+    for node in cluster_data.get("nodes", []):
+        hostname = node["hostname"]
+        ip = node["ipAddress"]
+        user = node["username"]
+        auth_type = node.get("authType")
+        password = node.get("password")
+        key_path = None
+
+        if auth_type == "SSH_KEY":
+            key_path = ssh_key_dir / f"{hostname}_id_rsa"
+
+    if auth_type == "SSH_KEY":
+        key_path = ssh_key_dir / f"{hostname}_id_rsa"
+
+    success, output = test_ssh_connection(ip, user, password, key_path)
+    if success:
+        print(f"✅ SSH to {hostname} ({ip}) succeeded: {output}", flush=True)
+    else:
+        print(f"❌ SSH to {hostname} ({ip}) failed: {output}", flush=True)
+        sys.exit(1)
 except subprocess.CalledProcessError as e:
-    print("❌ Ansible ping failed:\n", e.stderr, flush=True)
+    print("❌ Ansible ssh failed:\n", e.stderr, flush=True)
     sys.exit(1)
 
 print("✅ Script completed!", flush=True)
