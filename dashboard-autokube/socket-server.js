@@ -4,12 +4,9 @@ const path = require("path");
 const fs = require("fs");
 
 let io = null;
-
-// Track running processes per cluster
 const runningProcesses = {}; // { [clusterId]: { py, ansible } }
 
 require("dotenv").config({ path: path.resolve(__dirname, "../dashboard-autokube/.env") });
-
 
 function initializeSocket(server) {
   if (io) return io;
@@ -18,10 +15,9 @@ function initializeSocket(server) {
     path: "/api/socket",
     cors: {
       origin: process.env.NEXTAUTH_URL,
-      methods: ["GET","POST"]
+      methods: ["GET", "POST"]
     }
   });
-  
 
   function logAndEmit(clusterId, msg) {
     const clean = msg.toString().replace(/\r?\n$/, "");
@@ -42,6 +38,10 @@ function initializeSocket(server) {
       logAndEmit(clusterId, `[${prefix} stderr] ${data}`);
     });
 
+    proc.on("error", (err) => {
+      logAndEmit(clusterId, `[${prefix} error] ${err.message}`);
+    });
+
     proc.__listenersAttached = true;
   }
 
@@ -58,18 +58,12 @@ function initializeSocket(server) {
       socket.join(clusterId);
 
       const running = runningProcesses[clusterId];
-      if (running?.py) {
-        socket.emit("log", "📡 Re-attached to running Python script...");
-      }
-      if (running?.ansible) {
-        socket.emit("log", "📡 Re-attached to running Ansible...");
-      }
+      if (running?.py) socket.emit("log", "📡 Re-attached to running Python script...");
+      if (running?.ansible) socket.emit("log", "📡 Re-attached to running Ansible...");
     });
 
     socket.on("run-script", (clusterId) => {
       if (!clusterId) return;
-
-      // Prevent duplicate runs for the same cluster
       if (runningProcesses[clusterId]) {
         socket.emit("log", `⚠️ Deployment already running for cluster ${clusterId}`);
         return;
@@ -83,7 +77,6 @@ function initializeSocket(server) {
 
       if (!fs.existsSync(venvPath)) {
         logAndEmit(clusterId, "📦 Creating virtual environment...");
-
         const venv = spawn("python3", ["-m", "venv", venvPath]);
         attachProcessListeners(clusterId, venv, "venv");
 
@@ -100,14 +93,44 @@ function initializeSocket(server) {
       }
 
       function installDeps() {
-        const pip = spawn(path.join(venvPath, "bin/pip"), ["install", "-r", requirementsPath]);
+        const pipPath = path.join(venvPath, "bin/pip");
+        const pythonPath = path.join(venvPath, "bin/python");
+
+        if (!fs.existsSync(pipPath)) {
+          logAndEmit(clusterId, "⚠️ pip not found. Installing using ensurepip...");
+          const ensure = spawn(pythonPath, ["-m", "ensurepip"]);
+          attachProcessListeners(clusterId, ensure, "ensurepip");
+
+          ensure.on("close", (code) => {
+            if (code !== 0) {
+              logAndEmit(clusterId, `❌ Failed to install pip (code ${code})`);
+              return;
+            }
+
+            logAndEmit(clusterId, "✅ pip installed. Upgrading...");
+            const upgrade = spawn(pipPath, ["install", "--upgrade", "pip"]);
+            attachProcessListeners(clusterId, upgrade, "pip-upgrade");
+
+            upgrade.on("close", (upgradeCode) => {
+              if (upgradeCode !== 0) {
+                logAndEmit(clusterId, `⚠️ pip upgrade failed (code ${upgradeCode}), continuing...`);
+              }
+              installDeps(); // Retry installing requirements
+            });
+          });
+
+          return;
+        }
+
+        const pip = spawn(pipPath, ["install", "-r", requirementsPath]);
         attachProcessListeners(clusterId, pip, "pip");
 
         pip.on("close", (code) => {
           if (code !== 0) {
-            logAndEmit(clusterId, `❌ Pip install failed (code ${code})`);
+            logAndEmit(clusterId, `❌ pip install failed (code ${code})`);
             return;
           }
+
           logAndEmit(clusterId, "📦 Dependencies installed.");
           runPython();
         });
@@ -116,20 +139,18 @@ function initializeSocket(server) {
       function runPython() {
         const pyScript = path.resolve(__dirname, "../scripts/myscript.py");
         const nextAuthUrl = process.env.NEXTAUTH_URL;
-        const pythonPath = path.join(venvPath, "bin/python"); // use venv python
-      
+        const pythonPath = path.join(venvPath, "bin/python");
+
         const py = spawn(pythonPath, [pyScript, nextAuthUrl, clusterId]);
-      
+
         runningProcesses[clusterId] = { py, ansible: null };
         attachProcessListeners(clusterId, py, "python");
-      
+
         py.on("close", (code) => {
           logAndEmit(clusterId, `🐍 Python script finished (code ${code})`);
           runAnsible();
         });
       }
-      
-      
 
       function runAnsible() {
         const ansible = spawn("ansible-playbook", [
