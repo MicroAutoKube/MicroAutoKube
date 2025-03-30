@@ -65,7 +65,7 @@ echo -e "${BLUE}🚀 Starting $APP_NAME setup...${NC}"
 # Step 1: Update system and install base dependencies (no nodejs/npm from apt)
 echo -e "${YELLOW}🔄 Updating system and installing base dependencies...${NC}"
 sudo apt update && sudo apt upgrade -y
-sudo apt install -y curl unzip postgresql postgresql-contrib nginx certbot python3-certbot-nginx openssl git build-essential
+sudo apt install -y curl unzip postgresql postgresql-contrib nginx certbot python3-certbot-nginx openssl git build-essential python3.12-venv
 
 # Step 1.5: Install NVM and Node.js v22 LTS for $APP_USER
 echo -e "${YELLOW}⬇️ Installing Node.js v22 using NVM for user $APP_USER...${NC}"
