@@ -42,7 +42,6 @@ esac
 APP_DIR="/opt/$APP_NAME"
 BUN_INSTALL_DIR="/home/$APP_USER/.bun"
 BUN_PATH="$BUN_INSTALL_DIR/bin/bun"
-NODE_PATH="/usr/bin/node"
 
 # Ask for domain
 read -p "🌍 Enter your domain (leave blank for localhost): " DOMAIN
@@ -63,10 +62,25 @@ INTERNAL_API_TOKEN=$(openssl rand -hex 32)
 
 echo -e "${BLUE}🚀 Starting $APP_NAME setup...${NC}"
 
-# Step 1: Update system and install dependencies
-echo -e "${YELLOW}🔄 Updating system and installing dependencies...${NC}"
+# Step 1: Update system and install base dependencies (no nodejs/npm from apt)
+echo -e "${YELLOW}🔄 Updating system and installing base dependencies...${NC}"
 sudo apt update && sudo apt upgrade -y
-sudo apt install -y curl unzip postgresql postgresql-contrib nginx certbot python3-certbot-nginx openssl git nodejs npm
+sudo apt install -y curl unzip postgresql postgresql-contrib nginx certbot python3-certbot-nginx openssl git build-essential
+
+# Step 1.5: Install NVM and Node.js v22 LTS for $APP_USER
+echo -e "${YELLOW}⬇️ Installing Node.js v22 using NVM for user $APP_USER...${NC}"
+sudo -u $APP_USER bash -c '
+export NVM_DIR="$HOME/.nvm"
+if [ ! -d "$NVM_DIR" ]; then
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.2/install.sh | bash
+fi
+. "$NVM_DIR/nvm.sh"
+nvm install 22
+nvm alias default 22
+'
+
+# Ensure system uses correct path for Node
+NODE_PATH="/home/$APP_USER/.nvm/versions/node/v22.*/bin/node"
 
 # Step 2: Ensure user exists
 if id "$APP_USER" &>/dev/null; then

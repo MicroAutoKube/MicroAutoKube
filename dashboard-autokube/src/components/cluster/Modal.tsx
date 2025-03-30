@@ -7,6 +7,7 @@ import { useState, Fragment } from "react";
 import { FaPlus, FaTimes, FaExclamationCircle, FaTrash } from "react-icons/fa";
 import { toast } from "react-toastify";
 import Dropzone from "../common/Dropzone";
+import {crypto } from '@/lib/client'
 
 interface ClusterModalProps {
   isOpen: boolean;
