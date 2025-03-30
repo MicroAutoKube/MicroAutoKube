@@ -8,6 +8,9 @@ let io = null;
 // Track running processes per cluster
 const runningProcesses = {}; // { [clusterId]: { py, ansible } }
 
+require("dotenv").config({ path: path.resolve(__dirname, "../dashboard-autokube/.env") });
+
+
 function initializeSocket(server) {
   if (io) return io;
 
@@ -70,9 +73,9 @@ function initializeSocket(server) {
 
       logAndEmit(clusterId, "📦 Starting deployment...");
 
-      const basePath = path.resolve(__dirname, "../scripts/kubespray");
+      const basePath = path.resolve(__dirname, "../scripts");
       const venvPath = path.join(basePath, "venv");
-      const requirementsPath = path.join(basePath, "requirements.txt");
+      const requirementsPath = path.join(basePath, "kubespray/requirements.txt");
 
       if (!fs.existsSync(venvPath)) {
         logAndEmit(clusterId, "📦 Creating virtual environment...");
@@ -108,22 +111,27 @@ function initializeSocket(server) {
 
       function runPython() {
         const pyScript = path.resolve(__dirname, "../scripts/myscript.py");
-        const py = spawn("python3", [pyScript]);
-
+        const nextAuthUrl = process.env.NEXTAUTH_URL;
+        const pythonPath = path.join(venvPath, "bin/python"); // use venv python
+      
+        const py = spawn(pythonPath, [pyScript, nextAuthUrl, clusterId]);
+      
         runningProcesses[clusterId] = { py, ansible: null };
         attachProcessListeners(clusterId, py, "python");
-
+      
         py.on("close", (code) => {
           logAndEmit(clusterId, `🐍 Python script finished (code ${code})`);
           runAnsible();
         });
       }
+      
+      
 
       function runAnsible() {
         const ansible = spawn("ansible-playbook", [
           "-i",
-          path.join(basePath, "inventory/mycluster/"),
-          path.join(basePath, "cluster.yml"),
+          path.join(basePath, "kubespray/inventory/mycluster/"),
+          path.join(basePath, "kubespray/cluster.yml"),
           "-b",
           "-v",
         ]);
