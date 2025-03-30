@@ -1,6 +1,7 @@
 const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
+
 const { Server } = require('socket.io');
 
 let io = null;
@@ -168,9 +169,13 @@ function initializeSocket(server) {
         const playbookPath = 'cluster.yml';
         const workingDir = path.join(basePath, 'kubespray');
 
-        const ansible = spawn(ansiblePlaybookPath, ['-i', inventoryPath, playbookPath, '-b', '-v'], {
-          cwd: workingDir,
-        });
+        const ansible = spawn(
+          ansiblePlaybookPath,
+          ['-i', inventoryPath, playbookPath, '-b', '-v'],
+          {
+            cwd: workingDir,
+          },
+        );
 
         runningProcesses[clusterId].ansible = ansible;
         attachProcessListeners(clusterId, ansible, 'ansible');

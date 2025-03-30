@@ -1,7 +1,7 @@
 import http from "http";
 import { NextRequest, NextResponse } from "next/server";
 
-export async function GET(req: NextRequest) {
+export async function GET(req: NextRequest): Promise<NextResponse> {
   const url = new URL(req.url);
   const targetUrl = url.searchParams.get("url");
 

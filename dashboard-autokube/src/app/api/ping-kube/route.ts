@@ -1,7 +1,7 @@
 import https from "https";
 import { NextRequest, NextResponse } from "next/server";
 
-export async function GET(req: NextRequest) {
+export async function GET(req: NextRequest): Promise<NextResponse> {
   const url = new URL(req.url);
   const ip = url.searchParams.get("ip");
 
