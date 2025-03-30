@@ -176,7 +176,9 @@ function initializeSocket(server) {
       function runAnsible() {
         logAndEmit(clusterId, `🧰 Starting Ansible...`);
 
-        const ansible = spawn('ansible-playbook', [
+        const ansiblePlaybookPath = path.join(venvPath, 'bin/ansible-playbook');
+
+        const ansible = spawn(ansiblePlaybookPath, [
           '-i',
           path.join(basePath, 'kubespray/inventory/mycluster/'),
           path.join(basePath, 'kubespray/cluster.yml'),
