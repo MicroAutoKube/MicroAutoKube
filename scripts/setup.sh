@@ -159,8 +159,14 @@ sudo chown -R $APP_USER:$APP_USER $APP_DIR
 # 📦 Install JS Dependencies
 # ─────────────────────────────────────────────
 echo -e "${BOLD}${BLUE}📍 STEP 6: Installing Node.js Dependencies...${NC}"
-sudo -u $APP_USER bash -c "cd $APP_DIR/dashboard-autokube && $PKG_MANAGER install"
+sudo -u $APP_USER bash -c "
+export NVM_DIR=\"\$HOME/.nvm\"
+. \"\$NVM_DIR/nvm.sh\"
+nvm use 22
+cd $APP_DIR/dashboard-autokube && $PKG_MANAGER install
+"
 fail_if_error "Dependency installation failed"
+
 
 # ─────────────────────────────────────────────
 # 🔐 .env File
