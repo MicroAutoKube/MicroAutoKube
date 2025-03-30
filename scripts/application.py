@@ -52,46 +52,62 @@ if not master_node:
 ip = master_node["ipAddress"]
 user = master_node["username"]
 auth_type = master_node["authType"]
-ssh_cmd = ["ssh", "-o", "StrictHostKeyChecking=no", "-o", "UserKnownHostsFile=/dev/null", f"{user}@{ip}"]
+password = master_node.get("password")
 
-# If using PASSWORD auth, use sshpass
+# Helm command as single string (for proper remote shell execution)
+helm_cmd = (
+    "mkdir -p $HOME/.kube && "
+    "sudo -S cp -f /etc/kubernetes/admin.conf $HOME/.kube/config && "
+    "sudo chown $(id -u):$(id -g) $HOME/.kube/config && "
+    "KUBECONFIG=$HOME/.kube/config helm upgrade --install -n kubesphere-system "
+    "--create-namespace ks-core https://charts.kubesphere.io/main/ks-core-1.1.4.tgz "
+    "--debug --wait"
+)
+
+# Build full SSH command
 if auth_type == "PASSWORD":
-    password = master_node.get("password")
     if not password:
         print("❌ No password provided for SSH", flush=True)
         sys.exit(1)
-    ssh_cmd = ["sshpass", "-p", password] + ssh_cmd
+
+    ssh_cmd = [
+        "sshpass", "-p", password,
+        "ssh", "-tt",
+        "-o", "StrictHostKeyChecking=no",
+        "-o", "UserKnownHostsFile=/dev/null",
+        f"{user}@{ip}",
+        f"echo '{password}' | sudo -S bash -c \"{helm_cmd}\""
+    ]
 elif auth_type == "SSH_KEY":
     ssh_key = master_node.get("sshKey")
     if not ssh_key:
         print("❌ SSH key missing for MASTER node", flush=True)
         sys.exit(1)
+
     key_path = Path(f"/tmp/{cluster_id}_id_rsa")
     with open(key_path, "w") as f:
         f.write(ssh_key)
     os.chmod(key_path, 0o600)
-    ssh_cmd = ["ssh", "-tt", "-o", "StrictHostKeyChecking=no", "-o", "UserKnownHostsFile=/dev/null", f"{user}@{ip}"]
 
+    ssh_cmd = [
+        "ssh", "-tt",
+        "-i", str(key_path),
+        "-o", "StrictHostKeyChecking=no",
+        "-o", "UserKnownHostsFile=/dev/null",
+        f"{user}@{ip}",
+        f"bash -c \"{helm_cmd}\""
+    ]
+else:
+    print(f"❌ Unsupported auth type: {auth_type}", flush=True)
+    sys.exit(1)
 
-# Helm command
-helm_setup_and_install = (
-    "mkdir -p $HOME/.kube && "
-    "echo '' | sudo -S cp -f /etc/kubernetes/admin.conf $HOME/.kube/config && "
-    "sudo chown $(id -u):$(id -g) $HOME/.kube/config && "
-    "KUBECONFIG=$HOME/.kube/config "
-    "helm upgrade --install -n kubesphere-system "
-    "--create-namespace ks-core https://charts.kubesphere.io/main/ks-core-1.1.4.tgz "
-    "--debug --wait"
-)
-
-
-full_cmd = ssh_cmd + [helm_setup_and_install]
+# Run it
 print(f"🚀 Running KubeSphere install on {ip}...", flush=True)
 
 try:
-    result = subprocess.run(full_cmd, check=True, capture_output=True, text=True, timeout=300)
+    result = subprocess.run(ssh_cmd, check=True, capture_output=True, text=True, timeout=300)
     combined_output = result.stdout.strip() + "\n" + result.stderr.strip()
     print(f"✅ KubeSphere installed successfully:\n{combined_output}", flush=True)
 except subprocess.CalledProcessError as e:
-    print(f"❌ KubeSphere installation failed:\n{e.stderr}", flush=True)
+    print(f"❌ KubeSphere installation failed:\n{e.stderr.strip()}", flush=True)
     sys.exit(1)
