@@ -115,7 +115,7 @@ kube_network_node_prefix_ipv6: 120
 
 # The port the API Server will be listening on.
 kube_apiserver_ip: "{{ kube_service_subnets.split(',') | first | ansible.utils.ipaddr('net') | ansible.utils.ipaddr(1) | ansible.utils.ipaddr('address') }}"
-kube_apiserver_port: 6443  # (https)
+kube_apiserver_port: 6443 # (https)
 
 # Kube-proxy proxyMode configuration.
 # Can be ipvs, iptables, nftables
@@ -131,11 +131,7 @@ kube_proxy_strict_arp: false
 # The default empty string slice ([]) means to use all local addresses.
 # kube_proxy_nodeport_addresses_cidr is retained for legacy config
 kube_proxy_nodeport_addresses: >-
-  {%- if kube_proxy_nodeport_addresses_cidr is defined -%}
-  [{{ kube_proxy_nodeport_addresses_cidr }}]
-  {%- else -%}
-  []
-  {%- endif -%}
+  {%- if kube_proxy_nodeport_addresses_cidr is defined -%} [{{ kube_proxy_nodeport_addresses_cidr }}] {%- else -%} [] {%- endif -%}
 
 # If non-empty, will use this string as identification instead of the actual hostname
 # kube_override_hostname: {{ inventory_hostname }}
@@ -316,7 +312,14 @@ persistent_volumes_enabled: false
 # nvidia_gpu_device_plugin_container: "registry.k8s.io/nvidia-gpu-device-plugin@sha256:0842734032018be107fa2490c98156992911e3e1f2a21e059ff0105b07dd8e9e"
 
 ## Support tls min version, Possible values: VersionTLS10, VersionTLS11, VersionTLS12, VersionTLS13.
-# tls_min_version: ""
+tls_min_version: "VersionTLS13"
+
+## Support tls cipher suites.
+tls_cipher_suites:
+- TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
+- TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
+- TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+- TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
 
 ## Support tls cipher suites.
 # tls_cipher_suites: {}
@@ -347,9 +350,9 @@ persistent_volumes_enabled: false
 event_ttl_duration: "1h0m0s"
 
 ## Automatically renew K8S control plane certificates on first Monday of each month
-auto_renew_certificates: false
+auto_renew_certificates: true
 # First Monday of each month
-# auto_renew_certificates_systemd_calendar: "Mon *-*-1,2,3,4,5,6,7 03:{{ groups['kube_control_plane'].index(inventory_hostname) }}0:00"
+auto_renew_certificates_systemd_calendar: "Mon *-*-1,2,3,4,5,6,7 03:{{ groups['kube_control_plane'].index(inventory_hostname) }}0:00"
 
 kubeadm_patches_dir: "{{ kube_config_dir }}/patches"
 kubeadm_patches: []
