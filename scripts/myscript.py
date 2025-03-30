@@ -94,14 +94,19 @@ k8s_cluster_updates = {
     "container_manager": runtime_map.get(cluster_data.get("containerRuntime", "CONTAINERD"), "containerd")
 }
 
-download_updates = {
-    "containerd_version": cluster_data.get("containerVersion", "{{ (containerd_archive_checksums['amd64'] | dict2items)[0].key }}"),
-    "cri_dockerd_version": cluster_data.get("containerVersion", "{{ (cri_dockerd_archive_checksums['amd64'] | dict2items)[0].key }}")
-}
+container_version = cluster_data.get("containerVersion")
+download_updates = {}
+
+if container_version:
+    download_updates = {
+        "containerd_version": container_version,
+        "cri_dockerd_version": container_version
+    }
+if download_updates:
+    update_yaml_file(kubespray_defaults, download_updates)
 
 
 update_yaml_file(group_vars_k8s, k8s_cluster_updates)
-update_yaml_file(kubespray_defaults, download_updates)
 
 # ➕ Update addons in addons.yml
 cluster_config = cluster_data.get("clusterConfig", {})
@@ -237,7 +242,6 @@ def test_ssh_connection(ip, user, password=None, key_path=None):
     except Exception as ex:
         return False, str(ex)
 
-
 # 🔍 Test SSH connection for each node before ansible
 print("🔍 Testing raw SSH connection to all nodes...", flush=True)
 try:
@@ -252,15 +256,12 @@ try:
         if auth_type == "SSH_KEY":
             key_path = ssh_key_dir / f"{hostname}_id_rsa"
 
-    if auth_type == "SSH_KEY":
-        key_path = ssh_key_dir / f"{hostname}_id_rsa"
-
-    success, output = test_ssh_connection(ip, user, password, key_path)
-    if success:
-        print(f"✅ SSH to {hostname} ({ip}) succeeded: {output}", flush=True)
-    else:
-        print(f"❌ SSH to {hostname} ({ip}) failed: {output}", flush=True)
-        sys.exit(1)
+        success, output = test_ssh_connection(ip, user, password, key_path)
+        if success:
+            print(f"✅ SSH to {hostname} ({ip}) succeeded: {output}", flush=True)
+        else:
+            print(f"❌ SSH to {hostname} ({ip}) failed: {output}", flush=True)
+            sys.exit(1)
 except subprocess.CalledProcessError as e:
     print("❌ Ansible ssh failed:\n", e.stderr, flush=True)
     sys.exit(1)
