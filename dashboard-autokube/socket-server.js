@@ -4,6 +4,8 @@ const path = require("path");
 const fs = require("fs");
 
 let io = null;
+
+// Track running processes per cluster
 const runningProcesses = {}; // { [clusterId]: { py, ansible } }
 
 require("dotenv").config({ path: path.resolve(__dirname, "../dashboard-autokube/.env") });
@@ -15,8 +17,8 @@ function initializeSocket(server) {
     path: "/api/socket",
     cors: {
       origin: process.env.NEXTAUTH_URL,
-      methods: ["GET", "POST"]
-    }
+      methods: ["GET", "POST"],
+    },
   });
 
   function logAndEmit(clusterId, msg) {
@@ -36,10 +38,6 @@ function initializeSocket(server) {
 
     proc.stderr.on("data", (data) => {
       logAndEmit(clusterId, `[${prefix} stderr] ${data}`);
-    });
-
-    proc.on("error", (err) => {
-      logAndEmit(clusterId, `[${prefix} error] ${err.message}`);
     });
 
     proc.__listenersAttached = true;
@@ -64,6 +62,7 @@ function initializeSocket(server) {
 
     socket.on("run-script", (clusterId) => {
       if (!clusterId) return;
+
       if (runningProcesses[clusterId]) {
         socket.emit("log", `⚠️ Deployment already running for cluster ${clusterId}`);
         return;
@@ -73,6 +72,8 @@ function initializeSocket(server) {
 
       const basePath = path.resolve(__dirname, "../scripts");
       const venvPath = path.join(basePath, "venv");
+      const pythonPath = path.join(venvPath, "bin/python");
+      const pipPath = path.join(venvPath, "bin/pip");
       const requirementsPath = path.join(basePath, "kubespray/requirements.txt");
 
       if (!fs.existsSync(venvPath)) {
@@ -83,6 +84,7 @@ function initializeSocket(server) {
         venv.on("close", (code) => {
           if (code !== 0) {
             logAndEmit(clusterId, `❌ Failed to create venv (code ${code})`);
+            delete runningProcesses[clusterId];
             return;
           }
           installDeps();
@@ -93,21 +95,27 @@ function initializeSocket(server) {
       }
 
       function installDeps() {
-        const pipPath = path.join(venvPath, "bin/pip");
-        const pythonPath = path.join(venvPath, "bin/python");
-
         if (!fs.existsSync(pipPath)) {
           logAndEmit(clusterId, "⚠️ pip not found. Installing using ensurepip...");
+
           const ensure = spawn(pythonPath, ["-m", "ensurepip"]);
           attachProcessListeners(clusterId, ensure, "ensurepip");
 
           ensure.on("close", (code) => {
             if (code !== 0) {
-              logAndEmit(clusterId, `❌ Failed to install pip (code ${code})`);
+              logAndEmit(clusterId, `❌ ensurepip failed (code ${code})`);
+              delete runningProcesses[clusterId];
               return;
             }
 
-            logAndEmit(clusterId, "✅ pip installed. Upgrading...");
+            logAndEmit(clusterId, "✅ pip installed. Checking path...");
+
+            if (!fs.existsSync(pipPath)) {
+              logAndEmit(clusterId, `❌ pip still missing at ${pipPath}. Aborting.`);
+              delete runningProcesses[clusterId];
+              return;
+            }
+
             const upgrade = spawn(pipPath, ["install", "--upgrade", "pip"]);
             attachProcessListeners(clusterId, upgrade, "pip-upgrade");
 
@@ -115,7 +123,7 @@ function initializeSocket(server) {
               if (upgradeCode !== 0) {
                 logAndEmit(clusterId, `⚠️ pip upgrade failed (code ${upgradeCode}), continuing...`);
               }
-              installDeps(); // Retry installing requirements
+              installDeps(); // retry after upgrade
             });
           });
 
@@ -127,10 +135,10 @@ function initializeSocket(server) {
 
         pip.on("close", (code) => {
           if (code !== 0) {
-            logAndEmit(clusterId, `❌ pip install failed (code ${code})`);
+            logAndEmit(clusterId, `❌ Pip install failed (code ${code})`);
+            delete runningProcesses[clusterId];
             return;
           }
-
           logAndEmit(clusterId, "📦 Dependencies installed.");
           runPython();
         });
@@ -139,10 +147,9 @@ function initializeSocket(server) {
       function runPython() {
         const pyScript = path.resolve(__dirname, "../scripts/myscript.py");
         const nextAuthUrl = process.env.NEXTAUTH_URL;
-        const pythonPath = path.join(venvPath, "bin/python");
+        const python = path.join(venvPath, "bin/python");
 
-        const py = spawn(pythonPath, [pyScript, nextAuthUrl, clusterId]);
-
+        const py = spawn(python, [pyScript, nextAuthUrl, clusterId]);
         runningProcesses[clusterId] = { py, ansible: null };
         attachProcessListeners(clusterId, py, "python");
 
