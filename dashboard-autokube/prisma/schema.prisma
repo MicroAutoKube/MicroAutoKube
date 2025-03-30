@@ -26,6 +26,7 @@ model ClusterProfile {
   containerVersion  String
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
+  ready             Boolean?         @default(false)
 
   userId        String
   user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)

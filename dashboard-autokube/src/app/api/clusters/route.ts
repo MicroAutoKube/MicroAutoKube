@@ -208,3 +208,32 @@ export async function POST(req: NextRequest) {
         await prisma.$disconnect();
     }
 }
+export async function PUT(req: NextRequest) {
+    try {
+        const apiToken = req.headers.get("authorization");
+        const isTokenAuthorized = apiToken === `Bearer ${process.env.INTERNAL_API_TOKEN}`;
+
+        if (!isTokenAuthorized) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        const { searchParams } = new URL(req.url);
+        const clusterId = searchParams.get("id");
+
+        if (!clusterId) {
+            return NextResponse.json({ error: "Cluster ID is required" }, { status: 400 });
+        }
+
+        const updatedCluster = await prisma.clusterProfile.update({
+            where: { id: clusterId },
+            data: { ready: true },
+        });
+
+        return NextResponse.json({ message: "Cluster marked as ready", cluster: updatedCluster }, { status: 200 });
+    } catch (error: any) {
+        console.error("Error updating cluster status:", error);
+        return NextResponse.json({ error: error.message }, { status: 500 });
+    } finally {
+        await prisma.$disconnect();
+    }
+}

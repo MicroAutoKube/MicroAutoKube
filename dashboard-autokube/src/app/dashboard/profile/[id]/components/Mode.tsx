@@ -5,6 +5,7 @@ import { toast } from "react-toastify";
 import { ClusterProfileWithNodes } from "@/types/cluster";
 import Configuration from "./Configuration";
 import TerminalLog from "./Logs";
+import Application from "./Application";
 
 const Mode = ({ id }: { id: string }) => {
   const [mode, setMode] = useState("configuration");
@@ -44,6 +45,11 @@ const Mode = ({ id }: { id: string }) => {
         <Configuration cluster={cluster} setMode={setMode} />
 
       )}
+      {
+        mode === "application" && cluster && (
+          <Application cluster={cluster} />
+        )
+      }
       { mode === "logs" && cluster && (
         <TerminalLog id={id}/>
       )

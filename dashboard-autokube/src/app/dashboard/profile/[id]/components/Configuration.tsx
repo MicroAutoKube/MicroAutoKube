@@ -144,6 +144,14 @@ const Configuration = ({ cluster, setMode }: { cluster: ClusterProfileWithNodes,
           <p><span className="text-gray-400">Kubernetes Version:</span> {cluster.kubernetesVersion}</p>
           <p><span className="text-gray-400">Container Runtime:</span> {cluster.containerRuntime}</p>
           <p><span className="text-gray-400">Container Version:</span> {cluster.containerVersion}</p>
+          <p>
+      <span className="text-gray-400">Cluster Status:</span>{" "}
+      {cluster.ready ? (
+        <span className="text-green-400 font-medium">✅ Ready</span>
+      ) : (
+        <span className="text-yellow-400 font-medium">⏳ Not Ready</span>
+      )}
+    </p>
         </div>
       </div>
 

@@ -108,6 +108,20 @@ try:
     result = subprocess.run(ssh_cmd, check=True, capture_output=True, text=True, timeout=300)
     combined_output = result.stdout.strip() + "\n" + result.stderr.strip()
     print(f"✅ KubeSphere installed successfully:\n{combined_output}", flush=True)
+    # Update cluster status to ready
+    try:
+        print("🔄 Marking cluster as ready...", flush=True)
+        res = requests.put(
+            f"{nextauth_url}/api/clusters/?id={cluster_id}",
+            headers={"Authorization": f"Bearer {api_token}"}
+        )
+        res.raise_for_status()
+        print("✅ Cluster status updated to ready", flush=True)
+    except Exception as e:
+        print(f"❌ Failed to update cluster status: {e}", flush=True)
+        sys.exit(1)
+
+
 except subprocess.CalledProcessError as e:
     print(f"❌ KubeSphere installation failed:\n{e.stderr.strip()}", flush=True)
     sys.exit(1)
