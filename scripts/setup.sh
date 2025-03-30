@@ -255,7 +255,7 @@ echo -e "${YELLOW}🌐 Setting up Nginx reverse proxy...${NC}"
 NGINX_CONF="/etc/nginx/sites-available/$APP_NAME"
 
 sudo rm -f /etc/nginx/sites-enabled/$APP_NAME
-sudo bash -c "cat > $NGINX_CONF" <<EOF
+sudo bash -c "cat > $NGINX_CONF" <<'EOF'
 server {
     listen 80;
     server_name $DOMAIN;
@@ -265,17 +265,18 @@ server {
 
         # WebSocket support
         proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection "upgrade";
 
         # Other common headers
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
     }
 }
 EOF
+
 sudo ln -s $NGINX_CONF /etc/nginx/sites-enabled/
 sudo rm /etc/nginx/sites-enabled/default
 sudo systemctl restart nginx
