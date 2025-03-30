@@ -22,7 +22,7 @@ const Layout: React.FC<LayoutProps> = ({
                     width={80}
                     height={80}
                     alt="logo"
-                    className=""
+                    style={{width: "auto" , height: "auto"}}
                 />
 
                 {/* Navigation Buttons */}
