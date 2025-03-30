@@ -17,6 +17,8 @@ function initializeSocket(server) {
   io = new Server(server, {
     path: "/api/socket",
     cors: { origin: "*" },
+    transports: ["websocket"],
+    secure: location.protocol === "https:",
   });
 
   function logAndEmit(clusterId, msg) {
