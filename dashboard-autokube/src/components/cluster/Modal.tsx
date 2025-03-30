@@ -4,10 +4,10 @@ import { ClusterPayload } from "@/types/cluster";
 import { clusterSchema } from "@/utils/clusterSchema";
 import { Dialog, Transition } from "@headlessui/react";
 import { useState, Fragment } from "react";
-import {  FaTimes, FaExclamationCircle, FaTrash } from "react-icons/fa";
+import { FaTimes, FaExclamationCircle, FaTrash } from "react-icons/fa";
 import { toast } from "react-toastify";
 import Dropzone from "../common/Dropzone";
-import {uuidv4 } from '@/lib/client'
+import { uuidv4 } from '@/lib/client'
 
 interface ClusterModalProps {
   isOpen: boolean;
@@ -273,6 +273,12 @@ const ClusterModal = ({ isOpen, setIsOpen, createCluster }: ClusterModalProps) =
 
                 {globalAuthMode === "ssh_key" && (
                   <>
+                    <input
+                      className="w-full p-2 mt-2 rounded bg-gray-800 text-white border border-gray-700"
+                      placeholder="Global Username"
+                      value={globalUsername}
+                      onChange={(e) => setGlobalUsername(e.target.value)}
+                    />
                     <Dropzone
                       onFileAccepted={(file) => setGlobalSSHKey(file)}
                       currentFile={globalSSHKey}
@@ -325,22 +331,28 @@ const ClusterModal = ({ isOpen, setIsOpen, createCluster }: ClusterModalProps) =
                       <>
                         <input
                           className="w-full p-2 mt-2 rounded bg-gray-800 text-white border border-gray-700"
-                          placeholder="Global Username"
-                          value={globalUsername}
-                          onChange={(e) => setGlobalUsername(e.target.value)}
+                          placeholder="Username"
+                          value={node.username}
+                          onChange={(e) => handleNodeChange(node.id, "username", e.target.value)}
                         />
                         <input
                           type="password"
                           className="w-full p-2 mt-2 rounded bg-gray-800 text-white border border-gray-700"
-                          placeholder="Global Password"
-                          value={globalPassword}
-                          onChange={(e) => setGlobalPassword(e.target.value)}
+                          placeholder="Password"
+                          value={node.password}
+                          onChange={(e) => handleNodeChange(node.id, "password", e.target.value)}
                         />
                       </>
                     )}
 
                     {node.authMode === "ssh_key" && (
                       <>
+                        <input
+                          className="w-full p-2 mt-2 rounded bg-gray-800 text-white border border-gray-700"
+                          placeholder="Username"
+                          value={node.username}
+                          onChange={(e) => handleNodeChange(node.id, "username", e.target.value)}
+                        />
                         <Dropzone
                           onFileAccepted={(file) => handleNodeChange(node.id, "sshKey", file)}
                           currentFile={node.sshKey}
