@@ -41,5 +41,10 @@ export type ClusterProfileWithNodes = Prisma.ClusterProfileGetPayload<{
         globalCluster: true;
       };
     };
+    clusterApp: {
+      include : {
+        kubesphere: true;
+      }
+    }
   };
 }>;

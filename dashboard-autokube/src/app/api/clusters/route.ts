@@ -34,6 +34,11 @@ export async function GET(req: NextRequest) {
                             k8sCluster: true,
                             globalCluster: true
                         }
+                    },
+                    clusterApp : {
+                        include : {
+                            kubesphere : true
+                        }
                     }
                 }
             });

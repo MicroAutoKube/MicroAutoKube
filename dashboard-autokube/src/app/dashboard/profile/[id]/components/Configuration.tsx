@@ -5,7 +5,7 @@ import { FaClone, FaRunning, FaSave } from "react-icons/fa";
 import { toast } from "react-toastify";
 
 
-const Configuration = ({ cluster, setMode }: { cluster: ClusterProfileWithNodes , setMode: (m: string) => void }) => {
+const Configuration = ({ cluster, setMode }: { cluster: ClusterProfileWithNodes, setMode: (m: string) => void }) => {
   const [helmEnabled, setHelmEnabled] = useState(cluster.clusterConfig?.helm?.enabled ?? false);
   const [registry, setRegistry] = useState({
     enabled: cluster.clusterConfig?.registry?.enabled ?? false,
@@ -30,14 +30,17 @@ const Configuration = ({ cluster, setMode }: { cluster: ClusterProfileWithNodes 
     debug: cluster.clusterConfig?.localPathProvisioner?.debug ?? false,
   });
 
-  const handleSaveConfig = async () => {
+  const [kubesphere, setKubesphere] = useState(cluster.clusterApp?.kubesphere?.enabled ?? false);
+
+
+  const handleSaveClusterConfig = async () => {
     const configUpdates = {
       helm: { enabled: helmEnabled },
       registry,
       metrics,
       localPathProvisioner,
     };
-  
+
     try {
       const res = await fetch(`/api/clusters/config/${cluster.id}`, {
         method: "PUT",
@@ -46,14 +49,14 @@ const Configuration = ({ cluster, setMode }: { cluster: ClusterProfileWithNodes 
         },
         body: JSON.stringify(configUpdates),
       });
-  
+
       if (!res.ok) {
         const error = await res.json();
         console.error("Failed to save config:", error);
         toast.error("❌ Failed to save configuration.");
         return;
       }
-  
+
       const result = await res.json();
       console.log("✅ Configuration saved:", result);
       toast.success("✅ Configuration saved successfully!");
@@ -62,6 +65,29 @@ const Configuration = ({ cluster, setMode }: { cluster: ClusterProfileWithNodes 
       toast.error("❌ An error occurred while saving configuration.");
     }
   };
+
+  const handleSaveAppConfig = async () => {
+    try {
+      const res = await fetch(`/api/clusters/app/${cluster.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ kubesphere: { enabled: kubesphere } }),
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        console.error("Failed to save app config:", error);
+        toast.error("❌ Failed to save app config.");
+        return;
+      }
+
+      toast.success("✅ Application config saved!");
+    } catch (err) {
+      console.error("API error:", err);
+      toast.error("❌ Error saving application config.");
+    }
+  };
+
 
   const handleResetConfig = () => {
     setHelmEnabled(cluster.clusterConfig?.helm?.enabled ?? false);
@@ -87,8 +113,18 @@ const Configuration = ({ cluster, setMode }: { cluster: ClusterProfileWithNodes 
       claimRoot: cluster.clusterConfig?.localPathProvisioner?.claimRoot ?? "/opt/local-path-provisioner/",
       debug: cluster.clusterConfig?.localPathProvisioner?.debug ?? false,
     });
+
+
   }
-  
+
+  const handleResetAppConfig = () => {
+
+
+    setKubesphere(cluster.clusterApp?.kubesphere?.enabled ?? false);
+
+  }
+
+
 
   const handleRunScript = () => {
     setMode("logs");
@@ -96,8 +132,8 @@ const Configuration = ({ cluster, setMode }: { cluster: ClusterProfileWithNodes 
       window.dispatchEvent(new CustomEvent("trigger-run-script", { detail: cluster.id }));
     }, 100);
   };
-  
-  
+
+
 
   return (
     <div className="flex-1 px-10 py-6 text-white w-full">
@@ -276,43 +312,76 @@ const Configuration = ({ cluster, setMode }: { cluster: ClusterProfileWithNodes 
               </label>
             </div>
           )}
-
-
-
-
         </div>
+
+
       </div>
 
       <div className="flex gap-3">
-      <button
-        onClick={handleResetConfig}
-        className="mt-4 flex items-center gap-2 bg-gray-600 hover:bg-gray-700 text-white py-2 px-6 rounded-md transition"
-      >
-        <FaClone/>
-        Reset Configuration
-      </button>
+        <button
+          onClick={handleResetConfig}
+          className="mt-4 flex items-center gap-2 bg-gray-600 hover:bg-gray-700 text-white py-2 px-6 rounded-md transition"
+        >
+          <FaClone />
+          Reset Configuration
+        </button>
 
-      <button
-        onClick={handleSaveConfig}
-        className="mt-4 flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-2 px-6 rounded-md transition"
-      >
-        <FaSave />
-        Save Configuration
-      </button>
+        <button
+          onClick={handleSaveClusterConfig}
+          className="mt-4 flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-2 px-6 rounded-md transition"
+        >
+          <FaSave />
+          Save Configuration
+        </button>
 
 
-      <button
-        onClick={handleRunScript}
-        className="mt-4 flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white py-2 px-6 rounded-md transition"
-      >
-        <FaRunning/>
-        Run Script
-      </button>
-      
+
 
       </div>
 
-      
+
+      <div className="bg-gray-800 p-6 rounded-lg border border-gray-700 shadow-inner mb-6 mt-6">
+          <h3 className="text-xl font-semibold mb-4 border-b border-gray-600 pb-2">🧩 Applications</h3>
+          <label className="flex gap-3 flex-col justify-center items-start">
+            <input type="checkbox" checked={kubesphere} onChange={() => setKubesphere(!kubesphere)} />
+            Enable KubeSphere
+          </label>
+
+        </div>
+
+
+
+      <div className="flex gap-3">
+        <button
+          onClick={handleResetAppConfig}
+          className="mt-4 flex items-center gap-2 bg-gray-600 hover:bg-gray-700 text-white py-2 px-6 rounded-md transition"
+        >
+          <FaClone />
+          Reset App Configuration
+        </button>
+
+
+        <button
+          onClick={handleSaveAppConfig}
+          className="mt-4 flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-2 px-6 rounded-md transition"
+        >
+          <FaSave />
+          Save App Configuration
+        </button>
+
+
+        <button
+          onClick={handleRunScript}
+          className="mt-4 flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white py-2 px-6 rounded-md transition"
+        >
+          <FaRunning />
+          Run Script
+        </button>
+
+
+      </div>
+
+
     </div>
   );
 };

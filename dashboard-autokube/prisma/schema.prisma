@@ -31,6 +31,7 @@ model ClusterProfile {
   user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   nodes         Node[]
   clusterConfig ClusterConfig?
+  clusterApp ClusterApp?
 }
 
 model Node {
@@ -63,6 +64,27 @@ model ClusterConfig {
   localPathProvisioner LocalPathProvisionerConfig?
   k8sCluster           K8sClusterConfig?
   globalCluster        GlobalClusterConfig?
+}
+
+model ClusterApp {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  clusterProfileId String         @unique
+  clusterProfile   ClusterProfile @relation(fields: [clusterProfileId], references: [id], onDelete: Cascade)
+
+  kubesphere      KubesphereApp?
+}
+
+model KubesphereApp {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  enabled   Boolean  @default(false)
+
+  clusterAppId String        @unique
+  clusterApp   ClusterApp @relation(fields: [clusterAppId], references: [id], onDelete: Cascade)
 }
 
 model HelmConfig {
