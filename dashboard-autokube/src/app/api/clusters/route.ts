@@ -2,32 +2,27 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from '@/lib/server';
 import { AuthType, ContainerRuntime, NodeRole } from "@prisma/client";
 import { getServerSession } from "next-auth";
-import { decodeBase64SSHKey, encryptSSHKey } from "@/utils";
+import { decodeBase64SSHKey, encryptSSHKey , decryptSSHKey } from "@/utils";
 
 export async function GET(req: NextRequest) {
     try {
         const session = await getServerSession();
         const apiToken = req.headers.get("authorization");
-        
-        const isAuthorized =
-            (session?.user?.email) ||
-            apiToken === `Bearer ${process.env.INTERNAL_API_TOKEN}`;
-        
+
+        const isTokenAuthorized = apiToken === `Bearer ${process.env.INTERNAL_API_TOKEN}`;
+        const isAuthorized = session?.user?.email || isTokenAuthorized;
+
         if (!isAuthorized) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
-        
 
         const { searchParams } = new URL(req.url);
         const clusterId = searchParams.get("id");
 
+        // 🔍 If ID is provided, fetch one cluster
         if (clusterId) {
-            // 🔍 หากมี query id ให้หา cluster เดียว
             const cluster = await prisma.clusterProfile.findFirst({
-                where: {
-                    id: clusterId,
-                    // userId: session.user.id,
-                },
+                where: { id: clusterId },
                 include: {
                     nodes: true,
                     clusterConfig: {
@@ -47,12 +42,27 @@ export async function GET(req: NextRequest) {
                 return NextResponse.json({ error: "Cluster not found" }, { status: 404 });
             }
 
+            // 🛡️ Decrypt SSH keys if using internal token
+            if (isTokenAuthorized && cluster.nodes) {
+                cluster.nodes = await Promise.all(
+                    cluster.nodes.map(async (node) => {
+                        if (node.sshKey) {
+                            try {
+                                node.sshKey = await decryptSSHKey(node.sshKey);
+                            } catch (err) {
+                                console.error(`Failed to decrypt SSH key for node ${node.id}:`, err);
+                            }
+                        }
+                        return node;
+                    })
+                );
+            }
+
             return NextResponse.json(cluster, { status: 200 });
         }
 
-        // 🧾 หากไม่มี query id ให้หา cluster ทั้งหมดของ user
+        // 🧾 Otherwise, fetch all clusters
         const clusters = await prisma.clusterProfile.findMany({
-            // where: { userId: session.user.id },
             include: {
                 nodes: true,
                 clusterConfig: {
@@ -68,6 +78,26 @@ export async function GET(req: NextRequest) {
             }
         });
 
+        // 🛡️ Decrypt SSH keys if using internal token
+        if (isTokenAuthorized) {
+            for (const cluster of clusters) {
+                if (cluster.nodes) {
+                    cluster.nodes = await Promise.all(
+                        cluster.nodes.map(async (node) => {
+                            if (node.sshKey) {
+                                try {
+                                    node.sshKey = await decryptSSHKey(node.sshKey);
+                                } catch (err) {
+                                    console.error(`Failed to decrypt SSH key for node ${node.id}:`, err);
+                                }
+                            }
+                            return node;
+                        })
+                    );
+                }
+            }
+        }
+
         return NextResponse.json(clusters, { status: 200 });
     } catch (error) {
         console.error("Error fetching clusters:", error);
@@ -76,6 +106,7 @@ export async function GET(req: NextRequest) {
         await prisma.$disconnect();
     }
 }
+
 
 export async function POST(req: NextRequest) {
     try {
