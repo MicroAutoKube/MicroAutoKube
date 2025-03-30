@@ -59,6 +59,7 @@ fi
 DB_PASSWORD=$(openssl rand -hex 16)
 NEXTAUTH_SECRET=$(openssl rand -hex 32)
 ENCRYPTION_KEY=$(openssl rand -hex 32)
+INTERNAL_API_TOKEN=$(openssl rand -hex 32)
 
 echo -e "${BLUE}🚀 Starting $APP_NAME setup...${NC}"
 
@@ -158,6 +159,7 @@ NEXTAUTH_SECRET=$NEXTAUTH_SECRET
 NEXTAUTH_URL=http://${DOMAIN}:3000
 NODE_ENV=production
 ENCRYPTION_KEY=$ENCRYPTION_KEY
+INTERNAL_API_TOKEN=$INTERNAL_API_TOKEN
 EOF
 
 # Step 8: Run Prisma Migrations
