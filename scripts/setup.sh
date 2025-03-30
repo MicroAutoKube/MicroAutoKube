@@ -1,74 +1,86 @@
 #!/bin/bash
 
-# Define colors
+# ─────────────────────────────────────────────
+# 🎨 Colors
+# ─────────────────────────────────────────────
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[1;34m'
 RED='\033[0;31m'
+BOLD='\033[1m'
 NC='\033[0m' # No Color
 
-# Function to handle script interruption (Ctrl+C)
+# ─────────────────────────────────────────────
+# 🧯 Error Handlers
+# ─────────────────────────────────────────────
 cleanup() {
     echo -e "\n${RED}⚠️  Setup interrupted! Cleaning up...${NC}"
     exit 1
 }
 
-# Trap SIGINT (Ctrl+C) to call cleanup function
+fail_if_error() {
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}❌ $1${NC}"
+        exit 1
+    fi
+}
+
 trap cleanup SIGINT
 
-# Ask for application name
+# ─────────────────────────────────────────────
+# 🧠 Input Prompts
+# ─────────────────────────────────────────────
+echo -e "${BOLD}${BLUE}📍 CONFIGURATION${NC}"
 read -p "🚀 Enter the application name (default: autokube): " APP_NAME
 APP_NAME=${APP_NAME:-autokube}
 
-# Ask for system user
 read -p "👤 Enter the system user to run the application (default: tester): " APP_USER
 APP_USER=${APP_USER:-tester}
 
-# Ask for package manager
 echo -e "${YELLOW}📦 Select a package manager:${NC}"
 echo "1) bun"
 echo "2) npm"
 echo "3) pnpm"
 read -p "Enter choice (default: bun): " PKG_MANAGER_CHOICE
-
-# Set package manager based on user choice
 case "$PKG_MANAGER_CHOICE" in
     2) PKG_MANAGER="npm";;
     3) PKG_MANAGER="pnpm";;
     *) PKG_MANAGER="bun";;
 esac
 
-# Define directories
-APP_DIR="/opt/$APP_NAME"
-BUN_INSTALL_DIR="/home/$APP_USER/.bun"
-BUN_PATH="$BUN_INSTALL_DIR/bin/bun"
-
-# Ask for domain
 read -p "🌍 Enter your domain (leave blank for localhost): " DOMAIN
 DOMAIN=${DOMAIN:-localhost}
 
-# Ask for email if using a domain
 if [[ "$DOMAIN" != "localhost" ]]; then
     read -p "📧 Enter your email for SSL certificate: " EMAIL
 else
     EMAIL="none"
 fi
 
-# Generate secure credentials
+# ─────────────────────────────────────────────
+# 🔐 Secrets & Paths
+# ─────────────────────────────────────────────
+APP_DIR="/opt/$APP_NAME"
+BUN_INSTALL_DIR="/home/$APP_USER/.bun"
+BUN_PATH="$BUN_INSTALL_DIR/bin/bun"
+
 DB_PASSWORD=$(openssl rand -hex 16)
 NEXTAUTH_SECRET=$(openssl rand -hex 32)
 ENCRYPTION_KEY=$(openssl rand -hex 32)
 INTERNAL_API_TOKEN=$(openssl rand -hex 32)
 
-echo -e "${BLUE}🚀 Starting $APP_NAME setup...${NC}"
-
-# Step 1: Install system dependencies
-echo -e "${YELLOW}🔄 Installing base packages...${NC}"
+# ─────────────────────────────────────────────
+# 🔄 System Dependencies
+# ─────────────────────────────────────────────
+echo -e "${BOLD}${BLUE}📍 STEP 1: Installing System Dependencies...${NC}"
 sudo apt update && sudo apt upgrade -y
 sudo apt install -y curl unzip postgresql postgresql-contrib nginx certbot python3-certbot-nginx openssl git build-essential python3.12 python3.12-venv
+fail_if_error "System package installation failed"
 
-# Step 1.5: Install NVM and Node.js v22 LTS for $APP_USER
-echo -e "${YELLOW}⬇️ Installing Node.js v22 using NVM for user $APP_USER...${NC}"
+# ─────────────────────────────────────────────
+# 📦 Node + Package Manager
+# ─────────────────────────────────────────────
+echo -e "${BOLD}${BLUE}📍 STEP 2: Setting Up Node.js and $PKG_MANAGER...${NC}"
 sudo -u $APP_USER bash -c '
 export NVM_DIR="$HOME/.nvm"
 if [ ! -d "$NVM_DIR" ]; then
@@ -79,95 +91,80 @@ nvm install 22
 nvm alias default 22
 '
 
-# Ensure system uses correct path for Node
-NODE_PATH="/home/$APP_USER/.nvm/versions/node/v22.*/bin/node"
+if [[ "$PKG_MANAGER" == "bun" ]]; then
+    sudo -u $APP_USER bash -c "command -v bun || (curl -fsSL https://bun.sh/install | bash)"
+elif [[ "$PKG_MANAGER" == "pnpm" ]]; then
+    sudo -u $APP_USER bash -c "npm install -g pnpm --location=global"
+fi
 
-# Step 2: Ensure user exists
+# ─────────────────────────────────────────────
+# 👤 System User
+# ─────────────────────────────────────────────
+echo -e "${BOLD}${BLUE}📍 STEP 3: Creating/Using System User...${NC}"
 if id "$APP_USER" &>/dev/null; then
     echo -e "${GREEN}✅ User $APP_USER already exists.${NC}"
 else
-    echo -e "${YELLOW}👤 Creating system user: $APP_USER...${NC}"
     sudo useradd -m -r -s /bin/bash $APP_USER
     sudo usermod -aG sudo $APP_USER
+    echo -e "${GREEN}✅ User $APP_USER created.${NC}"
 fi
 
-# Step 3: Install the selected package manager
-if [[ "$PKG_MANAGER" == "bun" ]]; then
-    if ! sudo -u $APP_USER bash -c "command -v bun" &> /dev/null; then
-        echo -e "${YELLOW}📦 Installing Bun for $APP_USER...${NC}"
-        sudo -u $APP_USER bash -c "curl -fsSL https://bun.sh/install | bash"
-        sudo -u $APP_USER bash -c "echo 'export BUN_INSTALL=\"$HOME/.bun\"' >> ~/.bashrc"
-        sudo -u $APP_USER bash -c "echo 'export PATH=\"\$BUN_INSTALL/bin:\$PATH\"' >> ~/.bashrc"
-        sudo -u $APP_USER bash -c "source ~/.bashrc"
-    fi
-elif [[ "$PKG_MANAGER" == "pnpm" ]]; then
-    if ! sudo -u $APP_USER bash -c "command -v pnpm" &> /dev/null; then
-        echo -e "${YELLOW}📦 Installing pnpm...${NC}"
-        sudo -u $APP_USER bash -c "npm install -g pnpm --location=global"
-    fi
-fi
-
-# Step 4: Set up PostgreSQL
-echo -e "${YELLOW}🛠 Setting up PostgreSQL...${NC}"
+# ─────────────────────────────────────────────
+# 🐘 PostgreSQL
+# ─────────────────────────────────────────────
+echo -e "${BOLD}${BLUE}📍 STEP 4: Configuring PostgreSQL...${NC}"
 sudo systemctl start postgresql
 sudo systemctl enable postgresql
 
-# Check if database exists
 DB_EXISTS=$(sudo -u postgres psql -tAc "SELECT 1 FROM pg_database WHERE datname='$APP_NAME'")
-if [[ "$DB_EXISTS" == "1" ]]; then
-    echo -e "${GREEN}✅ Database '$APP_NAME' already exists. Skipping creation.${NC}"
-else
-    echo -e "${YELLOW}📦 Creating database '$APP_NAME'...${NC}"
+if [[ "$DB_EXISTS" != "1" ]]; then
     sudo -u postgres psql -c "CREATE DATABASE $APP_NAME;"
 fi
 
-# Check if user exists and update password
 USER_EXISTS=$(sudo -u postgres psql -tAc "SELECT 1 FROM pg_roles WHERE rolname='$APP_NAME'")
-if [[ "$USER_EXISTS" == "1" ]]; then
-    echo -e "${GREEN}✅ User '$APP_NAME' already exists. Updating password...${NC}"
-    sudo -u postgres psql -c "ALTER USER $APP_NAME WITH ENCRYPTED PASSWORD '$DB_PASSWORD';"
-else
-    echo -e "${YELLOW}👤 Creating PostgreSQL user '$APP_NAME'...${NC}"
+if [[ "$USER_EXISTS" != "1" ]]; then
     sudo -u postgres psql -c "CREATE USER $APP_NAME WITH ENCRYPTED PASSWORD '$DB_PASSWORD';"
 fi
 
-# Grant necessary privileges for Prisma to work
-echo -e "${YELLOW}🔑 Granting full privileges to '$APP_NAME' on '$APP_NAME' database and public schema...${NC}"
+sudo -u postgres psql -c "ALTER USER $APP_NAME WITH ENCRYPTED PASSWORD '$DB_PASSWORD';"
 sudo -u postgres psql -c "ALTER USER $APP_NAME CREATEDB;"
 sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE $APP_NAME TO $APP_NAME;"
+sudo -u postgres psql -d $APP_NAME <<SQL
+GRANT USAGE, CREATE ON SCHEMA public TO $APP_NAME;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO $APP_NAME;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO $APP_NAME;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO $APP_NAME;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO $APP_NAME;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO $APP_NAME;
+GRANT ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA public TO $APP_NAME;
+ALTER SCHEMA public OWNER TO $APP_NAME;
+SQL
 
-# Ensure the user has full access to the public schema
-sudo -u postgres psql -d $APP_NAME -c "GRANT USAGE, CREATE ON SCHEMA public TO $APP_NAME;"
-sudo -u postgres psql -d $APP_NAME -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO $APP_NAME;"
-sudo -u postgres psql -d $APP_NAME -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO $APP_NAME;"
-sudo -u postgres psql -d $APP_NAME -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO $APP_NAME;"
-sudo -u postgres psql -d $APP_NAME -c "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO $APP_NAME;"
-sudo -u postgres psql -d $APP_NAME -c "GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO $APP_NAME;"
-sudo -u postgres psql -d $APP_NAME -c "GRANT ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA public TO $APP_NAME;"
-sudo -u postgres psql -d $APP_NAME -c "ALTER SCHEMA public OWNER TO $APP_NAME;"
-
-# Restart PostgreSQL to ensure changes apply
-echo -e "${YELLOW}🔄 Restarting PostgreSQL to apply changes...${NC}"
 sudo systemctl restart postgresql
 
-# Step 5: Clone the repository
+# ─────────────────────────────────────────────
+# 🧾 Clone Repo
+# ─────────────────────────────────────────────
+echo -e "${BOLD}${BLUE}📍 STEP 5: Cloning Repository...${NC}"
 if [[ -d "$APP_DIR" ]]; then
-    echo -e "${YELLOW}🔄 Repository exists. Resetting and pulling latest changes...${NC}"
+    echo -e "${YELLOW}🔄 Repo exists. Pulling latest changes...${NC}"
     sudo -u $APP_USER bash -c "cd $APP_DIR && git reset --hard && git pull origin main"
 else
-    echo -e "${YELLOW}📥 Cloning project repository...${NC}"
     sudo -u $APP_USER bash -c "git clone https://github.com/MicroAutoKube/MicroAutoKube $APP_DIR"
 fi
-
 sudo chown -R $APP_USER:$APP_USER $APP_DIR
-cd $APP_DIR/dashboard-autokube
 
-# Step 6: Install dependencies
-echo -e "${YELLOW}📦 Installing dependencies with $PKG_MANAGER...${NC}"
+# ─────────────────────────────────────────────
+# 📦 Install JS Dependencies
+# ─────────────────────────────────────────────
+echo -e "${BOLD}${BLUE}📍 STEP 6: Installing Node.js Dependencies...${NC}"
 sudo -u $APP_USER bash -c "cd $APP_DIR/dashboard-autokube && $PKG_MANAGER install"
+fail_if_error "Dependency installation failed"
 
-# Step 7: Create .env file
-echo -e "${YELLOW}🔧 Creating .env file...${NC}"
+# ─────────────────────────────────────────────
+# 🔐 .env File
+# ─────────────────────────────────────────────
+echo -e "${BOLD}${BLUE}📍 STEP 7: Creating .env File...${NC}"
 sudo -u $APP_USER bash -c "cat > $APP_DIR/dashboard-autokube/.env" <<EOF
 DATABASE_URL=postgresql://$APP_NAME:$DB_PASSWORD@localhost:5432/$APP_NAME
 NEXTAUTH_SECRET=$NEXTAUTH_SECRET
@@ -177,10 +174,10 @@ ENCRYPTION_KEY=$ENCRYPTION_KEY
 INTERNAL_API_TOKEN=$INTERNAL_API_TOKEN
 EOF
 
-# Step 8: Run Prisma Migrations
-echo -e "${YELLOW}🔧 Running Prisma Migrations with $PKG_MANAGER...${NC}"
-
-# Determine the correct Prisma migration command
+# ─────────────────────────────────────────────
+# 🧬 Prisma Migration
+# ─────────────────────────────────────────────
+echo -e "${BOLD}${BLUE}📍 STEP 8: Running Prisma Migrations...${NC}"
 if [[ "$PKG_MANAGER" == "npm" ]]; then
     PRISMA_CMD="npx prisma migrate dev"
 elif [[ "$PKG_MANAGER" == "pnpm" ]]; then
@@ -189,23 +186,24 @@ else
     PRISMA_CMD="bun run prisma migrate dev"
 fi
 
-# Retry up to 5 times if migration fails
 for i in {1..5}; do
     sudo -u $APP_USER bash -c "cd $APP_DIR/dashboard-autokube && $PRISMA_CMD" && break
-    echo -e "${RED}⚠️ Prisma migration failed. Retrying in 5 seconds...${NC}"
+    echo -e "${RED}⚠️  Prisma migration failed. Retrying...${NC}"
     sleep 5
 done
 
-
-# Step 9: Build the project
-echo -e "${YELLOW}🏗 Building the project with $PKG_MANAGER...${NC}"
+# ─────────────────────────────────────────────
+# 🏗 Build Project
+# ─────────────────────────────────────────────
+echo -e "${BOLD}${BLUE}📍 STEP 9: Building the Project...${NC}"
 sudo -u $APP_USER bash -c "cd $APP_DIR/dashboard-autokube && $PKG_MANAGER run build"
+fail_if_error "Build failed"
 
-# Step 10: Create systemd service
-echo -e "${YELLOW}🔧 Creating systemd service...${NC}"
+# ─────────────────────────────────────────────
+# 🔧 systemd Service
+# ─────────────────────────────────────────────
+echo -e "${BOLD}${BLUE}📍 STEP 10: Creating systemd Service...${NC}"
 SERVICE_FILE="/etc/systemd/system/$APP_NAME.service"
-
-# Determine correct ExecStart command based on package manager
 if [[ "$PKG_MANAGER" == "npm" ]]; then
     EXEC_START="npm start"
 elif [[ "$PKG_MANAGER" == "pnpm" ]]; then
@@ -232,29 +230,17 @@ Environment=HOSTNAME=0.0.0.0
 WantedBy=multi-user.target
 EOF
 
-# Step 11: Start and enable the service
-echo -e "${YELLOW}🚀 Starting the service...${NC}"
 sudo systemctl daemon-reload
 sudo systemctl enable $APP_NAME
 sudo systemctl restart $APP_NAME
+fail_if_error "Service failed to start"
 
-# Step 12: Check if the service is running
-echo -e "${YELLOW}📡 Checking service status...${NC}"
-sleep 3  # Wait a few seconds for service to start
-SERVICE_STATUS=$(systemctl is-active $APP_NAME)
-
-if [[ "$SERVICE_STATUS" == "active" ]]; then
-    echo -e "${GREEN}✅ Service '$APP_NAME' is running successfully!${NC}"
-else
-    echo -e "${RED}❌ Service '$APP_NAME' failed to start! Check logs using:${NC}"
-    echo -e "${YELLOW}journalctl -u $APP_NAME --no-pager --lines=50${NC}"
-fi
-
-# Step 13: Configure Nginx
-echo -e "${YELLOW}🌐 Setting up Nginx reverse proxy...${NC}"
+# ─────────────────────────────────────────────
+# 🌐 Nginx
+# ─────────────────────────────────────────────
+echo -e "${BOLD}${BLUE}📍 STEP 11: Configuring Nginx...${NC}"
 NGINX_CONF="/etc/nginx/sites-available/$APP_NAME"
 
-sudo rm -f /etc/nginx/sites-enabled/$APP_NAME
 sudo bash -c "cat > $NGINX_CONF" <<'EOF'
 server {
     listen 80;
@@ -262,13 +248,9 @@ server {
 
     location / {
         proxy_pass http://127.0.0.1:3000;
-
-        # WebSocket support
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection "upgrade";
-
-        # Other common headers
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
@@ -277,37 +259,38 @@ server {
 }
 EOF
 
-# Enable site only if not already enabled
 if [[ ! -L /etc/nginx/sites-enabled/$APP_NAME ]]; then
-  sudo ln -s "$NGINX_CONF" /etc/nginx/sites-enabled/
+    sudo ln -s "$NGINX_CONF" /etc/nginx/sites-enabled/
 fi
 
-# Remove default site if it exists
 if [[ -L /etc/nginx/sites-enabled/default ]]; then
-  sudo rm /etc/nginx/sites-enabled/default
+    sudo rm /etc/nginx/sites-enabled/default
 fi
 
-# Test and reload nginx
-echo -e "${YELLOW}🔁 Reloading Nginx...${NC}"
-sudo nginx -t && sudo systemctl restart nginx
+sudo nginx -t
+fail_if_error "Nginx config test failed"
+sudo systemctl restart nginx
+fail_if_error "Nginx restart failed"
 
-# Step 14: Set up SSL if using a domain
+# ─────────────────────────────────────────────
+# 🔒 SSL
+# ─────────────────────────────────────────────
 if [[ "$DOMAIN" != "localhost" ]]; then
-    echo -e "${YELLOW}🔒 Setting up SSL...${NC}"
+    echo -e "${YELLOW}🔐 Installing SSL for $DOMAIN...${NC}"
     sudo certbot --nginx -m "$EMAIL" -d "$DOMAIN" --agree-tos --non-interactive
-    echo -e "${GREEN}✅ SSL installed.${NC}"
+    fail_if_error "SSL certificate setup failed"
 fi
 
-# Get the server's IP address
+# ─────────────────────────────────────────────
+# 🎉 All Done!
+# ─────────────────────────────────────────────
 SERVER_IP=$(hostname -I | awk '{print $1}')
-
-# Final Message
 echo -e "${GREEN}✅ Deployment complete!${NC}"
 echo -e "${BLUE}🌍 App running at: ${RED}http://$DOMAIN${NC}"
 echo -e "${BLUE}🌍 Server IP Address: ${RED}http://$SERVER_IP${NC}"
 echo -e "${BLUE}🔑 PostgreSQL password: ${RED}$DB_PASSWORD${NC}"
 echo -e "${BLUE}🔑 NextAuth Secret: ${RED}$NEXTAUTH_SECRET${NC}"
 echo -e "${BLUE}🔑 Encryption Key: ${RED}$ENCRYPTION_KEY${NC}"
-echo -e "${BLUE}🔑 INTERNAL API TOKEN Key: ${RED}$INTERNAL_API_TOKEN${NC}"
-echo -e "${BLUE}📧 Default admin email: ${RED}admin@example.com${NC}"
-echo -e "${BLUE}🔑 Default admin password: ${RED}admin${NC}"
+echo -e "${BLUE}🔑 INTERNAL API TOKEN: ${RED}$INTERNAL_API_TOKEN${NC}"
+echo -e "${BLUE}📧 Admin Email: ${RED}admin@example.com${NC}"
+echo -e "${BLUE}🔑 Admin Password: ${RED}admin${NC}"
