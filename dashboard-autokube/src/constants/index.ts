@@ -1,6 +1,12 @@
 export const kubernetesVersionsKubespray = [
 
+    "1.32.3",
+    "1.32.2",
+    "1.32.1",
     "1.32.0",
+    "1.31.7",
+    "1.31.6",
+    "1.31.5",
     "1.31.4",
     "1.31.3",
     "1.31.2",
@@ -35,13 +41,18 @@ export const kubernetesVersionsKubekey = ["1.19.0", "1.19.8", "1.19.9", "1.19.15
 export const dockerVersionsKubekey = ["24.0.6", "24.0.9"];
 
 export const dockerVersionsKubespray = [
-    "0.3.11",
-    "0.3.10",
-    "0.3.9",
-    "0.3.8",
-    "0.3.7",
-    "0.3.6",
-    "0.3.5",
+  "0.3.16",
+  "0.3.15",
+  "0.3.14",
+  "0.3.13",
+  "0.3.12",
+  "0.3.11",
+  "0.3.10",
+  "0.3.9",
+  "0.3.8",
+  "0.3.7",
+  "0.3.6",
+  "0.3.5"
 ]
 
 export const containerdVersionsKubekey = [

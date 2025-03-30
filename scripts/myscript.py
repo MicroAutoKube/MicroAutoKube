@@ -109,10 +109,14 @@ container_version = cluster_data.get("containerVersion")
 download_updates = {}
 
 if container_version:
-    download_updates = {
-        "containerd_version": container_version,
-        "cri_dockerd_version": container_version
-    }
+    if cluster_data.get("containerRuntime", "CONTAINERD") == "CONTAINERD":
+        download_updates = {
+            "containerd_version": container_version
+        }
+    elif cluster_data.get("containerRuntime", "CONTAINERD") == "DOCKER":
+        download_updates = {
+            "cri_dockerd_version": container_version
+        }
 if download_updates:
     update_yaml_file(kubespray_defaults, download_updates)
 

@@ -44,9 +44,7 @@ const Configuration = ({ cluster, setMode }: { cluster: ClusterProfileWithNodes,
     try {
       const res = await fetch(`/api/clusters/config/${cluster.id}`, {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(configUpdates),
       });
 
@@ -54,17 +52,20 @@ const Configuration = ({ cluster, setMode }: { cluster: ClusterProfileWithNodes,
         const error = await res.json();
         console.error("Failed to save config:", error);
         toast.error("❌ Failed to save configuration.");
-        return;
+        return false;
       }
 
       const result = await res.json();
       console.log("✅ Configuration saved:", result);
       toast.success("✅ Configuration saved successfully!");
+      return true;
     } catch (err) {
       console.error("API error:", err);
       toast.error("❌ An error occurred while saving configuration.");
+      return false;
     }
   };
+
 
   const handleSaveAppConfig = async () => {
     try {
@@ -78,15 +79,18 @@ const Configuration = ({ cluster, setMode }: { cluster: ClusterProfileWithNodes,
         const error = await res.json();
         console.error("Failed to save app config:", error);
         toast.error("❌ Failed to save app config.");
-        return;
+        return false;
       }
 
       toast.success("✅ Application config saved!");
+      return true;
     } catch (err) {
       console.error("API error:", err);
       toast.error("❌ Error saving application config.");
+      return false;
     }
   };
+
 
 
   const handleResetConfig = () => {
@@ -113,16 +117,10 @@ const Configuration = ({ cluster, setMode }: { cluster: ClusterProfileWithNodes,
       claimRoot: cluster.clusterConfig?.localPathProvisioner?.claimRoot ?? "/opt/local-path-provisioner/",
       debug: cluster.clusterConfig?.localPathProvisioner?.debug ?? false,
     });
-
-
-  }
-
-  const handleResetAppConfig = () => {
-
-
     setKubesphere(cluster.clusterApp?.kubesphere?.enabled ?? false);
 
   }
+
 
 
 
@@ -317,7 +315,20 @@ const Configuration = ({ cluster, setMode }: { cluster: ClusterProfileWithNodes,
 
       </div>
 
-      <div className="flex gap-3">
+
+      <div className="bg-gray-800 p-6 rounded-lg border border-gray-700 shadow-inner mb-6 mt-6">
+        <h3 className="text-xl font-semibold mb-4 border-b border-gray-600 pb-2">🧩 Applications</h3>
+        <label className="flex gap-3 flex-col justify-center items-start">
+          <input type="checkbox" checked={kubesphere} onChange={() => setKubesphere(!kubesphere)} />
+          Enable KubeSphere
+        </label>
+
+      </div>
+
+
+
+      <div className="flex flex-wrap gap-3">
+        {/* Reset Buttons */}
         <button
           onClick={handleResetConfig}
           className="mt-4 flex items-center gap-2 bg-gray-600 hover:bg-gray-700 text-white py-2 px-6 rounded-md transition"
@@ -326,60 +337,27 @@ const Configuration = ({ cluster, setMode }: { cluster: ClusterProfileWithNodes,
           Reset Configuration
         </button>
 
+        {/* Save & Run Button */}
         <button
-          onClick={handleSaveClusterConfig}
-          className="mt-4 flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-2 px-6 rounded-md transition"
-        >
-          <FaSave />
-          Save Configuration
-        </button>
+          onClick={async () => {
+            toast.info("📡 Saving cluster and app config...");
+            const clusterRes = await handleSaveClusterConfig();
+            const appRes = await handleSaveAppConfig();
 
-
-
-
-      </div>
-
-
-      <div className="bg-gray-800 p-6 rounded-lg border border-gray-700 shadow-inner mb-6 mt-6">
-          <h3 className="text-xl font-semibold mb-4 border-b border-gray-600 pb-2">🧩 Applications</h3>
-          <label className="flex gap-3 flex-col justify-center items-start">
-            <input type="checkbox" checked={kubesphere} onChange={() => setKubesphere(!kubesphere)} />
-            Enable KubeSphere
-          </label>
-
-        </div>
-
-
-
-      <div className="flex gap-3">
-        <button
-          onClick={handleResetAppConfig}
-          className="mt-4 flex items-center gap-2 bg-gray-600 hover:bg-gray-700 text-white py-2 px-6 rounded-md transition"
-        >
-          <FaClone />
-          Reset App Configuration
-        </button>
-
-
-        <button
-          onClick={handleSaveAppConfig}
-          className="mt-4 flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-2 px-6 rounded-md transition"
-        >
-          <FaSave />
-          Save App Configuration
-        </button>
-
-
-        <button
-          onClick={handleRunScript}
+            if (clusterRes && appRes) {
+              toast.success("✅ Configuration saved. Starting deployment...");
+              handleRunScript();
+            } else {
+              toast.error("❌ Could not start deployment due to save error.");
+            }
+          }}
           className="mt-4 flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white py-2 px-6 rounded-md transition"
         >
-          <FaRunning />
-          Run Script
+          <FaSave />
+          Save & Run Script
         </button>
-
-
       </div>
+
 
 
     </div>
