@@ -77,10 +77,13 @@ def update_yaml_file(file_path, updates):
     with open(file_path, "r") as f:
         data = yaml.safe_load(f) or {}
 
-    data.update(updates)
+    # Merge updates without overwriting top-level keys blindly
+    for key, value in updates.items():
+        data[key] = value
 
     with open(file_path, "w") as f:
-        yaml.dump(data, f, default_flow_style=False)
+        yaml.dump(data, f, default_flow_style=False, sort_keys=False)
+
     print(f"✅ Updated: {file_path}", flush=True)
 
 

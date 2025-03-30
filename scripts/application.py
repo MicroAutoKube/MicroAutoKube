@@ -52,7 +52,7 @@ if not master_node:
 ip = master_node["ipAddress"]
 user = master_node["username"]
 auth_type = master_node["authType"]
-ssh_cmd = ["ssh", "-o", "StrictHostKeyChecking=no", f"{user}@{ip}"]
+ssh_cmd = ["ssh", "-o", "StrictHostKeyChecking=no", "-o", "UserKnownHostsFile=/dev/null", f"{user}@{ip}"]
 
 # If using PASSWORD auth, use sshpass
 if auth_type == "PASSWORD":
@@ -66,19 +66,18 @@ elif auth_type == "SSH_KEY":
     if not ssh_key:
         print("❌ SSH key missing for MASTER node", flush=True)
         sys.exit(1)
-    # Save SSH key to temp file
     key_path = Path(f"/tmp/{cluster_id}_id_rsa")
     with open(key_path, "w") as f:
         f.write(ssh_key)
     os.chmod(key_path, 0o600)
-    ssh_cmd = ["ssh", "-i", str(key_path), "-o", "StrictHostKeyChecking=no", f"{user}@{ip}"]
+    ssh_cmd = ["ssh", "-tt", "-o", "StrictHostKeyChecking=no", "-o", "UserKnownHostsFile=/dev/null", f"{user}@{ip}"]
 
-# Helm command to install KubeSphere
+
+# Helm command
 helm_setup_and_install = (
     "mkdir -p $HOME/.kube && "
-    "sudo cp -f /etc/kubernetes/admin.conf $HOME/.kube/config && "
+    "echo '' | sudo -S cp -f /etc/kubernetes/admin.conf $HOME/.kube/config && "
     "sudo chown $(id -u):$(id -g) $HOME/.kube/config && "
-    "sudo chown $(id -u):$(id -g) /etc/kubernetes/admin.conf && "
     "KUBECONFIG=$HOME/.kube/config "
     "helm upgrade --install -n kubesphere-system "
     "--create-namespace ks-core https://charts.kubesphere.io/main/ks-core-1.1.4.tgz "
@@ -91,7 +90,8 @@ print(f"🚀 Running KubeSphere install on {ip}...", flush=True)
 
 try:
     result = subprocess.run(full_cmd, check=True, capture_output=True, text=True, timeout=300)
-    print(f"✅ KubeSphere installed successfully:\n{result.stdout}", flush=True)
+    combined_output = result.stdout.strip() + "\n" + result.stderr.strip()
+    print(f"✅ KubeSphere installed successfully:\n{combined_output}", flush=True)
 except subprocess.CalledProcessError as e:
     print(f"❌ KubeSphere installation failed:\n{e.stderr}", flush=True)
     sys.exit(1)
