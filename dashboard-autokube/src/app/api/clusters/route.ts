@@ -7,10 +7,16 @@ import { decodeBase64SSHKey, encryptSSHKey } from "@/utils";
 export async function GET(req: NextRequest) {
     try {
         const session = await getServerSession();
-
-        if (!session?.user?.email) {
+        const apiToken = req.headers.get("authorization");
+        
+        const isAuthorized =
+            (session?.user?.email) ||
+            apiToken === `Bearer ${process.env.INTERNAL_API_TOKEN}`;
+        
+        if (!isAuthorized) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
+        
 
         const { searchParams } = new URL(req.url);
         const clusterId = searchParams.get("id");
@@ -20,7 +26,7 @@ export async function GET(req: NextRequest) {
             const cluster = await prisma.clusterProfile.findFirst({
                 where: {
                     id: clusterId,
-                    userId: session.user.id,
+                    // userId: session.user.id,
                 },
                 include: {
                     nodes: true,
@@ -46,7 +52,7 @@ export async function GET(req: NextRequest) {
 
         // 🧾 หากไม่มี query id ให้หา cluster ทั้งหมดของ user
         const clusters = await prisma.clusterProfile.findMany({
-            where: { userId: session.user.id },
+            // where: { userId: session.user.id },
             include: {
                 nodes: true,
                 clusterConfig: {
