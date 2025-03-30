@@ -277,9 +277,19 @@ server {
 }
 EOF
 
-sudo ln -s $NGINX_CONF /etc/nginx/sites-enabled/
-sudo rm /etc/nginx/sites-enabled/default
-sudo systemctl restart nginx
+# Enable site only if not already enabled
+if [[ ! -L /etc/nginx/sites-enabled/$APP_NAME ]]; then
+  sudo ln -s "$NGINX_CONF" /etc/nginx/sites-enabled/
+fi
+
+# Remove default site if it exists
+if [[ -L /etc/nginx/sites-enabled/default ]]; then
+  sudo rm /etc/nginx/sites-enabled/default
+fi
+
+# Test and reload nginx
+echo -e "${YELLOW}🔁 Reloading Nginx...${NC}"
+sudo nginx -t && sudo systemctl restart nginx
 
 # Step 14: Set up SSL if using a domain
 if [[ "$DOMAIN" != "localhost" ]]; then
