@@ -11,7 +11,6 @@ export default function TerminalLog({ id: clusterId }: { id: string }) {
     useEffect(() => {
         const s = io({
             path: "/api/socket",
-            transports: ["websocket"],
         });
         setSocket(s);
 
