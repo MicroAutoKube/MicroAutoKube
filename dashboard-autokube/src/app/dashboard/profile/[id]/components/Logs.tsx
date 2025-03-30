@@ -33,11 +33,9 @@ export default function TerminalLog({ id: clusterId }: { id: string }) {
         window.addEventListener("trigger-run-script", handleTrigger as EventListener);
 
         return () => {
-            const timeout = setTimeout(() => {
-                s.disconnect();
-            }, 500);
+            
             window.removeEventListener("trigger-run-script", handleTrigger as EventListener);
-            clearTimeout(timeout);
+            s.disconnect();
         };
     }, []);
 

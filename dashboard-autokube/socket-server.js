@@ -1,14 +1,13 @@
-// server/socket.js
 const { Server } = require("socket.io");
 const { spawn } = require("child_process");
 const path = require("path");
 const fs = require("fs");
 
-require("dotenv").config({ path: path.resolve(__dirname, "../dashboard-autokube/.env") });
-
 let io = null;
 const runningProcesses = {}; // { [clusterId]: { py, ansible } }
-const triggerSource = {}; // 👈 track which socket started the script per cluster
+const lastLogByCluster = {}; // 🧠 Prevent duplicate logs
+
+require("dotenv").config({ path: path.resolve(__dirname, "../dashboard-autokube/.env") });
 
 function initializeSocket(server) {
   if (io) return io;
@@ -20,7 +19,7 @@ function initializeSocket(server) {
         process.env.NEXTAUTH_URL,
         `http://${process.env.SERVER_IP}`,
         "http://localhost",
-        "http://localhost:3000"
+        "http://localhost:3000",
       ],
       methods: ["GET", "POST"],
     },
@@ -28,22 +27,23 @@ function initializeSocket(server) {
 
   function logAndEmit(clusterId, msg) {
     const clean = msg.toString().replace(/\r?\n$/, "");
+
+    if (lastLogByCluster[clusterId] === clean) return;
+    lastLogByCluster[clusterId] = clean;
+
     const logFilePath = path.resolve(__dirname, `../logs/deploy-${clusterId}.log`);
     fs.mkdirSync(path.dirname(logFilePath), { recursive: true });
     fs.appendFileSync(logFilePath, clean + "\n");
 
-    const room = io.sockets.adapter.rooms.get(clusterId);
-    if (room && room.size > 0) {
-      io.to(clusterId).emit("log", clean);
-    } else if (triggerSource[clusterId]) {
-      io.to(triggerSource[clusterId]).emit("log", clean);
-    }
+    io.to(clusterId).emit("log", clean);
   }
 
   function attachProcessListeners(clusterId, proc, prefix) {
     if (proc.__listenersAttached) return;
+
     proc.stdout.on("data", (data) => logAndEmit(clusterId, `[${prefix}] ${data}`));
     proc.stderr.on("data", (data) => logAndEmit(clusterId, `[${prefix} stderr] ${data}`));
+
     proc.__listenersAttached = true;
   }
 
@@ -56,6 +56,7 @@ function initializeSocket(server) {
         const logs = fs.readFileSync(logFilePath, "utf8").split("\n").filter(Boolean);
         logs.forEach((line) => socket.emit("log", line));
       }
+
       socket.join(clusterId);
 
       const running = runningProcesses[clusterId];
@@ -71,7 +72,7 @@ function initializeSocket(server) {
         return;
       }
 
-      triggerSource[clusterId] = socket.id;
+      console.log(`[${clusterId}] 🔁 run-script triggered by socket: ${socket.id}`);
       logAndEmit(clusterId, "📦 Starting deployment...");
 
       const basePath = path.resolve(__dirname, "../scripts");
@@ -111,15 +112,9 @@ function initializeSocket(server) {
               return;
             }
 
-            logAndEmit(clusterId, "✅ pip installed. Checking path...");
-            if (!fs.existsSync(pipPath)) {
-              logAndEmit(clusterId, `❌ pip still missing at ${pipPath}. Aborting.`);
-              delete runningProcesses[clusterId];
-              return;
-            }
-
             const upgrade = spawn(pipPath, ["install", "--upgrade", "pip"]);
             attachProcessListeners(clusterId, upgrade, "pip-upgrade");
+
             upgrade.on("close", (upgradeCode) => {
               if (upgradeCode !== 0) {
                 logAndEmit(clusterId, `⚠️ pip upgrade failed (code ${upgradeCode}), continuing...`);
@@ -127,6 +122,7 @@ function initializeSocket(server) {
               installDeps(); // retry after upgrade
             });
           });
+
           return;
         }
 
@@ -139,6 +135,7 @@ function initializeSocket(server) {
             delete runningProcesses[clusterId];
             return;
           }
+
           logAndEmit(clusterId, "📦 Dependencies installed.");
           runPython();
         });
@@ -146,10 +143,9 @@ function initializeSocket(server) {
 
       function runPython() {
         const pyScript = path.resolve(__dirname, "../scripts/myscript.py");
-        const nextAuthUrl = process.env.NEXTAUTH_URL;
         const python = path.join(venvPath, "bin/python");
 
-        const py = spawn(python, [pyScript, nextAuthUrl, clusterId]);
+        const py = spawn(python, [pyScript, process.env.NEXTAUTH_URL, clusterId]);
         runningProcesses[clusterId] = { py, ansible: null };
         attachProcessListeners(clusterId, py, "python");
 
@@ -161,9 +157,11 @@ function initializeSocket(server) {
 
       function runAnsible() {
         const ansible = spawn("ansible-playbook", [
-          "-i", path.join(basePath, "kubespray/inventory/mycluster/"),
+          "-i",
+          path.join(basePath, "kubespray/inventory/mycluster/"),
           path.join(basePath, "kubespray/cluster.yml"),
-          "-b", "-v",
+          "-b",
+          "-v",
         ]);
 
         runningProcesses[clusterId].ansible = ansible;
@@ -172,7 +170,6 @@ function initializeSocket(server) {
         ansible.on("close", (code) => {
           logAndEmit(clusterId, `✅ Ansible finished (code ${code})`);
           delete runningProcesses[clusterId];
-          delete triggerSource[clusterId];
         });
       }
     });
@@ -195,7 +192,6 @@ function initializeSocket(server) {
       }
 
       delete runningProcesses[clusterId];
-      delete triggerSource[clusterId];
     });
 
     socket.on("clear-logs", (clusterId) => {
