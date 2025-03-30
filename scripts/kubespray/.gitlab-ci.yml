@@ -6,18 +6,24 @@ stages:
   - deploy-extended
 
 variables:
-  KUBESPRAY_VERSION: v2.27.0
   FAILFASTCI_NAMESPACE: 'kargo-ci'
   GITLAB_REPOSITORY: 'kargo-ci/kubernetes-sigs-kubespray'
+  GIT_CONFIG_COUNT: 2
+  GIT_CONFIG_KEY_0: user.email
+  GIT_CONFIG_VALUE_0: "ci@kubespray.io"
+  GIT_CONFIG_KEY_1: user.name
+  GIT_CONFIG_VALUE_1: "Kubespray CI"
   ANSIBLE_FORCE_COLOR: "true"
   MAGIC: "ci check this"
   GS_ACCESS_KEY_ID: $GS_KEY
   GS_SECRET_ACCESS_KEY: $GS_SECRET
   CONTAINER_ENGINE: docker
-  SSH_USER: root
   GCE_PREEMPTIBLE: "false"
   ANSIBLE_KEEP_REMOTE_FILES: "1"
   ANSIBLE_CONFIG: ./tests/ansible.cfg
+  ANSIBLE_REMOTE_USER: kubespray
+  ANSIBLE_PRIVATE_KEY_FILE: /tmp/id_rsa
+  ANSIBLE_INVENTORY: /tmp/inventory
   RESET_CHECK: "false"
   REMOVE_NODE_CHECK: "false"
   UPGRADE_TEST: "false"
@@ -50,7 +56,6 @@ before_script:
   needs:
     - pipeline-image
     - ci-not-authorized
-    - check-galaxy-version  # lint
     - pre-commit            # lint
     - vagrant-validate      # lint
 

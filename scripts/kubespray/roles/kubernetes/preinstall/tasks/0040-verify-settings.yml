@@ -1,7 +1,62 @@
 ---
+- name: Stop if some versions have a 'v' left at the start
+  # TODO: drop this task after 2.28.0 is released
+  # The 'not defined' tests are exception for applications which version in not defined
+  # in kubespray-defaults, only in their own roles.
+  assert:
+    msg: |
+      All version string used in kubespray have been normalized to not use a leading 'v'.
+      This check will be dropped in the next minor release.
+    that:
+      - argocd_version is not defined or not argocd_version.startswith('v')
+      - not aws_ebs_csi_plugin_version.startswith('v')
+      - not azure_csi_plugin_version.startswith('v')
+      - not calico_version.startswith('v')
+      - not calico_apiserver_version.startswith('v')
+      - not calico_ctl_version.startswith('v')
+      - not calico_typha_version.startswith('v')
+      - not cephfs_provisioner_version.startswith('v')
+      - not cert_manager_version.startswith('v')
+      - not cilium_cli_version.startswith('v')
+      - not cilium_version.startswith('v')
+      - not cinder_csi_plugin_version.startswith('v')
+      - not cni_version.startswith('v')
+      - not dnsautoscaler_version.startswith('v')
+      - not flannel_cni_version.startswith('v')
+      - not flannel_version.startswith('v')
+      - gateway_api_version is not defined or not gateway_api_version.startswith('v')
+      - not gcp_pd_csi_plugin_version.startswith('v')
+      - not helm_version.startswith('v')
+      - not kube_ovn_version.startswith('v')
+      - not kube_router_version.startswith('v')
+      - not kube_version.startswith('v')
+      - kube_vip_version is not defined or not kube_vip_version.startswith('v')
+      - not local_path_provisioner_version.startswith('v')
+      - not local_volume_provisioner_version.startswith('v')
+      - not metallb_version.startswith('v')
+      - not metrics_server_version.startswith('v')
+      - not multus_version.startswith('v')
+      - not netcheck_version.startswith('v')
+      - not rbd_provisioner_version.startswith('v')
+      - not runc_version.startswith('v')
+      - not skopeo_version.startswith('v')
+      - not yq_version.startswith('v')
+
+- name: Stop if some derived versions have a 'v' left at the start
+  # TODO: drop this task after 2.28.0 is released
+  # The 'not defined' tests are exception for applications which version in not defined
+  # in kubespray-defaults, only in their own roles.
+  assert:
+    msg: |
+      All version string used in kubespray have been normalized to not use a leading 'v'.
+      This check will be dropped in the next minor release.
+    that:
+      - not etcd_version.startswith('v')
+      - not pod_infra_version.startswith('v')
+
 - name: Stop if any host not in '--limit' does not have a fact cache
   vars:
-    uncached_hosts: "{{ hostvars | dict2items | selectattr('value.ansible_default_ipv6', 'value.ansible_default_ipv4', 'undefined') | map(attribute='key') }}"
+    uncached_hosts: "{{ hostvars | dict2items | selectattr('value.ansible_default_ipv6', 'undefined') | selectattr('value.ansible_default_ipv4', 'undefined') | map(attribute='key') }}"
     excluded_hosts: "{{ groups['k8s_cluster'] | difference(query('inventory_hostnames', ansible_limit)) }}"
   assert:
     that: uncached_hosts | intersect(excluded_hosts) == []
@@ -147,11 +202,18 @@
     - dashboard_enabled
     - not ignore_assert_errors
 
-- name: Stop if kernel version is too low
+- name: Stop if kernel version is too low for cilium
   assert:
     that: ansible_kernel.split('-')[0] is version('4.9.17', '>=')
   when:
     - kube_network_plugin == 'cilium' or cilium_deploy_additionally | default(false) | bool
+    - not ignore_assert_errors
+
+- name: Stop if kernel version is too low for nftables
+  assert:
+    that: ansible_kernel.split('-')[0] is version('5.13', '>=')
+  when:
+    - kube_proxy_mode == 'nftables'
     - not ignore_assert_errors
 
 - name: Stop if bad hostname
@@ -259,7 +321,7 @@
     that:
       - kube_network_plugin in ['calico', 'flannel', 'weave', 'cloud', 'cilium', 'cni', 'kube-ovn', 'kube-router', 'macvlan', 'custom_cni', 'none']
       - dns_mode in ['coredns', 'coredns_dual', 'manual', 'none']
-      - kube_proxy_mode in ['iptables', 'ipvs']
+      - kube_proxy_mode in ['iptables', 'ipvs', 'nftables']
       - cert_management in ['script', 'none']
       - resolvconf_mode in ['docker_dns', 'host_resolvconf', 'none']
       - etcd_deployment_type in ['host', 'docker', 'kubeadm']

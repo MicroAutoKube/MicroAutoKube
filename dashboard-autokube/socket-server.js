@@ -175,29 +175,35 @@ function initializeSocket(server) {
 
       function runAnsible() {
         logAndEmit(clusterId, `🧰 Starting Ansible...`);
-
+      
         const ansiblePlaybookPath = path.join(venvPath, 'bin/ansible-playbook');
-
+        const inventoryPath = path.join('inventory', clusterId, 'hosts.yaml'); 
+        const playbookPath = 'cluster.yml'; 
+        const workingDir = path.join(basePath, 'kubespray');
+      
         const ansible = spawn(ansiblePlaybookPath, [
           '-i',
-          path.join(basePath, 'kubespray/inventory/mycluster/'),
-          path.join(basePath, 'kubespray/cluster.yml'),
+          inventoryPath,
+          playbookPath,
           '-b',
           '-v',
-        ]);
-
+        ], {
+          cwd: workingDir, 
+        });
+      
         runningProcesses[clusterId].ansible = ansible;
         attachProcessListeners(clusterId, ansible, 'ansible');
-
+      
         ansible.on('error', (err) => {
           logAndEmit(clusterId, `❌ Failed to start Ansible: ${err.message}`);
         });
-
+      
         ansible.on('close', (code) => {
           logAndEmit(clusterId, `✅ Ansible finished (code ${code})`);
           delete runningProcesses[clusterId];
         });
       }
+      
 
     });
 

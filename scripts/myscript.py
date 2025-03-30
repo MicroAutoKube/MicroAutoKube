@@ -6,6 +6,7 @@ import subprocess
 import yaml
 from dotenv import load_dotenv
 from pathlib import Path
+import shutil
 
 # Load env from ../dashboard-autokube/.env
 env_path = Path(__file__).resolve().parent.parent / "dashboard-autokube" / ".env"
@@ -41,11 +42,23 @@ except Exception as e:
     sys.exit(1)
 
 # Build inventory
-inventory_dir = Path(__file__).resolve().parent.parent / "kubespray" / "inventory" / cluster_id
-inventory_dir.mkdir(parents=True, exist_ok=True)
+inventory_dir = Path(__file__).resolve().parent / "kubespray" / "inventory" / cluster_id
+inventory_dir.mkdir( exist_ok=True)
 hosts_file = inventory_dir / "hosts.yaml"
 ssh_key_dir = inventory_dir / "keys"
-ssh_key_dir.mkdir(parents=True, exist_ok=True)
+ssh_key_dir.mkdir( exist_ok=True)
+
+# 📂 Copy group_vars
+group_vars_src = Path(__file__).resolve().parent / "kubespray" / "inventory" / "local" / "group_vars"
+group_vars_dest = inventory_dir / "group_vars"
+
+if group_vars_src.exists():
+    if group_vars_dest.exists():
+        shutil.rmtree(group_vars_dest)
+    shutil.copytree(group_vars_src, group_vars_dest)
+    print(f"📂 group_vars copied to: {group_vars_dest}", flush=True)
+else:
+    print(f"⚠️ group_vars source folder not found: {group_vars_src}", flush=True)
 
 print(f"📁 Creating inventory at: {hosts_file}", flush=True)
 
@@ -81,7 +94,7 @@ for node in cluster_data.get("nodes", []):
         password = node["password"]
         host_entry["ansible_ssh_pass"] = password
         host_entry["ansible_become_password"] = password
-    elif auth_type == "KEY":
+    elif auth_type == "SSH_KEY":
         ssh_key = node.get("sshKey")
         if not ssh_key:
             print(f"❌ Missing sshKey for node {name}", flush=True)

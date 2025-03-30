@@ -1,7 +1,6 @@
 ---
 # Instance settings
 cloud_image: almalinux-9
-mode: default
 vm_memory: 3072
 
 # Kubespray settings
@@ -10,6 +9,8 @@ dashboard_namespace: "kube-dashboard"
 dashboard_enabled: true
 loadbalancer_apiserver_type: haproxy
 local_path_provisioner_enabled: true
+
+kube_proxy_mode: nftables
 
 # NTP mangement
 ntp_enabled: true
