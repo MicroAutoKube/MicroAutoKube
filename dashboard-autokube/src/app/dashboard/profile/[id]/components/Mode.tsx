@@ -29,7 +29,7 @@ const Mode = ({ id }: { id: string }) => {
   
     useEffect(() => {
       getClusterInfo();
-    }, []);
+    }, [mode]);
 
   return (
     <div className="grid grid-cols-7 min-h-[50vh]">

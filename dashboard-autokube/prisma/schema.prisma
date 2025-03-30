@@ -91,7 +91,7 @@ model HelmConfig {
   id        String   @id @default(cuid())
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  enabled   Boolean  @default(false)
+  enabled   Boolean  @default(true)
 
   clusterConfigId String        @unique
   clusterConfig   ClusterConfig @relation(fields: [clusterConfigId], references: [id], onDelete: Cascade)

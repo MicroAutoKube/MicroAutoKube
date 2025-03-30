@@ -164,6 +164,7 @@ function initializeSocket(server) {
 
         py.on('error', (err) => {
           logAndEmit(clusterId, `❌ Failed to start Python process: ${err.message}`);
+          delete runningProcesses[clusterId];
         });
 
         py.on('close', (code) => {
@@ -200,6 +201,30 @@ function initializeSocket(server) {
       
         ansible.on('close', (code) => {
           logAndEmit(clusterId, `✅ Ansible finished (code ${code})`);
+          runInstallApp();
+        });
+      }
+
+      function runInstallApp() {
+        logAndEmit(clusterId, `🧰 Starting Install Application Script...`);
+        const pyScript = path.resolve(__dirname, '../scripts/application.py');
+        const nextAuthUrl = process.env.NEXTAUTH_URL;
+        const python = path.join(venvPath, 'bin/python');
+
+        const app = spawn(python, [pyScript, nextAuthUrl, clusterId]);
+
+        runningProcesses[clusterId] = { app, ansible: null };
+        attachProcessListeners(clusterId, app, 'python');
+
+        logAndEmit(clusterId, `🐍 Python script started: ${python} ${pyScript}`);
+
+        app.on('error', (err) => {
+          logAndEmit(clusterId, `❌ Failed to start Python process: ${err.message}`);
+          delete runningProcesses[clusterId];
+        });
+
+        app.on('close', (code) => {
+          logAndEmit(clusterId, `🐍 Python script finished (code ${code})`);
           delete runningProcesses[clusterId];
         });
       }

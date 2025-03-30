@@ -62,6 +62,76 @@ else:
 
 print(f"📁 Creating inventory at: {hosts_file}", flush=True)
 
+# 📦 Update group_vars YAML files with cluster config
+group_vars_k8s = inventory_dir / "group_vars" / "k8s_cluster" / "k8s-cluster.yml"
+group_vars_addons = inventory_dir / "group_vars" / "k8s_cluster" / "addons.yml"
+
+def update_yaml_file(file_path, updates):
+    if not file_path.exists():
+        print(f"⚠️ {file_path} not found, skipping update", flush=True)
+        return
+
+    with open(file_path, "r") as f:
+        data = yaml.safe_load(f) or {}
+
+    data.update(updates)
+
+    with open(file_path, "w") as f:
+        yaml.dump(data, f, default_flow_style=False)
+    print(f"✅ Updated: {file_path}", flush=True)
+
+# ➕ Update kube_version in k8s-cluster.yml
+k8s_cluster_updates = {
+    "kube_version": cluster_data.get("kubernetesVersion", "1.32.0")
+}
+
+update_yaml_file(group_vars_k8s, k8s_cluster_updates)
+
+# ➕ Update addons in addons.yml
+cluster_config = cluster_data.get("clusterConfig", {})
+addons_updates = {
+    "helm_enabled": cluster_config.get("helm", {}).get("enabled", True),
+    "registry_enabled": cluster_config.get("registry", {}).get("enabled", False),
+    "metrics_server_enabled": cluster_config.get("metrics", {}).get("enabled", False),
+    "local_path_provisioner_enabled": cluster_config.get("localPathProvisioner", {}).get("enabled", False),
+}
+
+# ➕ Optional: Add detailed config if the addon is enabled
+
+# ── Registry ─────────────────────────────
+if addons_updates["registry_enabled"]:
+    registry = cluster_config.get("registry", {})
+    addons_updates["registry_namespace"] = registry.get("namespace", "kube-system")
+    addons_updates["registry_storage_class"] = registry.get("storageClass", "")
+    addons_updates["registry_disk_size"] = registry.get("diskSize", "10Gi")
+
+# ── Metrics Server ───────────────────────
+if addons_updates["metrics_server_enabled"]:
+    metrics = cluster_config.get("metrics", {})
+    addons_updates["metrics_server_container_port"] = metrics.get("containerPort", 10250)
+    addons_updates["metrics_server_kubelet_insecure_tls"] = metrics.get("kubeletInsecureTls", False)
+    addons_updates["metrics_server_metric_resolution"] = f"{metrics.get('metricResolution', 15)}s"
+    addons_updates["metrics_server_host_network"] = metrics.get("hostNetwork", False)
+    addons_updates["metrics_server_replicas"] = metrics.get("replicas", 1)
+
+# ── Local Path Provisioner ───────────────
+if addons_updates["local_path_provisioner_enabled"]:
+    lp = cluster_config.get("localPathProvisioner", {})
+    addons_updates["local_path_provisioner_namespace"] = lp.get("namespace", "local-path-storage")
+    addons_updates["local_path_provisioner_storage_class"] = lp.get("storageClass", "local-path")
+    addons_updates["local_path_provisioner_reclaim_policy"] = lp.get("reclaim_policy", "Delete")
+    addons_updates["local_path_provisioner_claim_root"] = lp.get("claimRoot", "/opt/local-path-provisioner/")
+    addons_updates["local_path_provisioner_debug"] = lp.get("debug", False)
+    addons_updates["local_path_provisioner_image_repo"] = lp.get("imageRepo", "{{ docker_image_repo }}/rancher/local-path-provisioner")
+    addons_updates["local_path_provisioner_image_tag"] = lp.get("imageTag", "v0.0.24")
+    addons_updates["local_path_provisioner_helper_image_repo"] = lp.get("helperImageRepo", "busybox")
+    addons_updates["local_path_provisioner_helper_image_tag"] = lp.get("helperImageTag", "latest")
+
+
+update_yaml_file(group_vars_addons, addons_updates)
+
+
+
 all_hosts = {}
 children = {
     "kube_control_plane": {"hosts": {}},
