@@ -72,8 +72,8 @@ function initializeSocket(server) {
 
       const basePath = path.resolve(__dirname, "../scripts");
       const venvPath = path.join(basePath, "venv");
-      const pythonPath = path.join(venvPath, "bin/python");
-      const pipPath = path.join(venvPath, "bin/pip");
+      const pythonPath = path.join(venvPath, "bin/python3");
+      const pipPath = path.join(venvPath, "bin/pip3");
       const requirementsPath = path.join(basePath, "kubespray/requirements.txt");
 
       if (!fs.existsSync(venvPath)) {
