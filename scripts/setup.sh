@@ -89,7 +89,7 @@ if [[ "$PKG_MANAGER" == "bun" ]]; then
 elif [[ "$PKG_MANAGER" == "pnpm" ]]; then
     if ! sudo -u $APP_USER bash -c "command -v pnpm" &> /dev/null; then
         echo -e "${YELLOW}📦 Installing pnpm...${NC}"
-        sudo -u $APP_USER bash -c "npm install -g pnpm"
+        sudo -u $APP_USER bash -c "npm install -g pnpm --location=global"
     fi
 fi
 
@@ -138,12 +138,13 @@ sudo systemctl restart postgresql
 
 # Step 5: Clone the repository
 if [[ -d "$APP_DIR" ]]; then
-    echo -e "${YELLOW}🔄 Repository exists. Pulling latest changes...${NC}"
-    sudo -u $APP_USER bash -c "cd $APP_DIR && git pull"
+    echo -e "${YELLOW}🔄 Repository exists. Resetting and pulling latest changes...${NC}"
+    sudo -u $APP_USER bash -c "cd $APP_DIR && git reset --hard && git pull origin main"
 else
     echo -e "${YELLOW}📥 Cloning project repository...${NC}"
     sudo -u $APP_USER bash -c "git clone https://github.com/MicroAutoKube/MicroAutoKube $APP_DIR"
 fi
+
 sudo chown -R $APP_USER:$APP_USER $APP_DIR
 cd $APP_DIR/dashboard-autokube
 
@@ -275,5 +276,6 @@ echo -e "${BLUE}🌍 Server IP Address: ${RED}http://$SERVER_IP${NC}"
 echo -e "${BLUE}🔑 PostgreSQL password: ${RED}$DB_PASSWORD${NC}"
 echo -e "${BLUE}🔑 NextAuth Secret: ${RED}$NEXTAUTH_SECRET${NC}"
 echo -e "${BLUE}🔑 Encryption Key: ${RED}$ENCRYPTION_KEY${NC}"
+echo -e "${BLUE}🔑 INTERNAL API TOKEN Key: ${RED}$INTERNAL_API_TOKEN${NC}"
 echo -e "${BLUE}📧 Default admin email: ${RED}admin@example.com${NC}"
 echo -e "${BLUE}🔑 Default admin password: ${RED}admin${NC}"
