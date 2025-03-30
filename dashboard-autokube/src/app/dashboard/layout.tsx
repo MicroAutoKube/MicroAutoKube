@@ -15,7 +15,7 @@ const Layout: React.FC<LayoutProps> = ({
     return (
         <div className="w-screen h-screen gap-20">
             {/* Sidebar */}
-            <div className="flex items-center bg-gray-800 bg-opacity-50 backdrop-blur-lg shadow-xl rounded-3xl p-3 mt-3 mx-3 border border-blue-800 ">
+            <div className="flex items-center bg-gray-800/50 bg-opacity-50 backdrop-blur-lg shadow-xl rounded-3xl p-3 mt-3 mx-3 border border-blue-800 ">
                 {/* Logo */}
                 <Image
                     src="/logo/logo.png"
@@ -35,7 +35,7 @@ const Layout: React.FC<LayoutProps> = ({
                 </div> */}
             </div>
 
-            <div className=" flex min-h-[80vh] my-10 bg-gray-800 bg-opacity-50 backdrop-blur-lg shadow-xl rounded-3xl p-6 mx-3 border border-blue-800">
+            <div className=" flex min-h-[80vh] my-10 bg-gray-800/50 backdrop-blur-lg shadow-xl rounded-3xl p-6 mx-3 border border-blue-800">
                 {children}
             </div>
    
