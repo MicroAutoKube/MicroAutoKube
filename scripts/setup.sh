@@ -241,7 +241,7 @@ fail_if_error "Service failed to start"
 echo -e "${BOLD}${BLUE}📍 STEP 11: Configuring Nginx...${NC}"
 NGINX_CONF="/etc/nginx/sites-available/$APP_NAME"
 
-sudo bash -c "cat > $NGINX_CONF" <<'EOF'
+sudo bash -c "cat > $NGINX_CONF" <<EOF
 server {
     listen 80;
     server_name $DOMAIN;
@@ -250,7 +250,7 @@ server {
         proxy_pass http://127.0.0.1:3000;
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection "upgrade";
+        proxy_set_header Connection \"upgrade\";
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
@@ -258,6 +258,7 @@ server {
     }
 }
 EOF
+
 
 if [[ ! -L /etc/nginx/sites-enabled/$APP_NAME ]]; then
     sudo ln -s "$NGINX_CONF" /etc/nginx/sites-enabled/
