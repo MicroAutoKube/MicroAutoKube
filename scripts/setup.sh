@@ -63,6 +63,7 @@ fi
 APP_DIR="/opt/$APP_NAME"
 BUN_INSTALL_DIR="/home/$APP_USER/.bun"
 BUN_PATH="$BUN_INSTALL_DIR/bin/bun"
+SERVER_IP=$(hostname -I | awk '{print $1}')
 
 DB_PASSWORD=$(openssl rand -hex 16)
 NEXTAUTH_SECRET=$(openssl rand -hex 32)
@@ -172,6 +173,7 @@ NEXTAUTH_URL=http://${DOMAIN}:3000
 NODE_ENV=production
 ENCRYPTION_KEY=$ENCRYPTION_KEY
 INTERNAL_API_TOKEN=$INTERNAL_API_TOKEN
+SERVER_IP=$SERVER_IP
 EOF
 
 # ─────────────────────────────────────────────
@@ -285,7 +287,7 @@ fi
 # ─────────────────────────────────────────────
 # 🎉 All Done!
 # ─────────────────────────────────────────────
-SERVER_IP=$(hostname -I | awk '{print $1}')
+
 echo -e "${GREEN}✅ Deployment complete!${NC}"
 echo -e "${BLUE}🌍 App running at: ${RED}http://$DOMAIN${NC}"
 echo -e "${BLUE}🌍 Server IP Address: ${RED}http://$SERVER_IP${NC}"
