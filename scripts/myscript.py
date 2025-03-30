@@ -7,6 +7,8 @@ import yaml
 from dotenv import load_dotenv
 from pathlib import Path
 import shutil
+from ruamel.yaml import YAML
+from ruamel.yaml.scalarstring import DoubleQuotedScalarString
 
 # Load env from ../dashboard-autokube/.env
 env_path = Path(__file__).resolve().parent.parent / "dashboard-autokube" / ".env"
@@ -74,22 +76,23 @@ def update_yaml_file(file_path, updates):
         print(f"⚠️ {file_path} not found, skipping update", flush=True)
         return
 
-    with open(file_path, "r") as f:
-        data = yaml.safe_load(f) or {}
+    yaml = YAML()
+    yaml.preserve_quotes = True
+    yaml.width = 4096  # Prevent line wrapping
+    yaml.indent(mapping=2, sequence=4, offset=2)
 
-    # Only apply updates to keys that already exist or are explicitly added
+    with open(file_path, "r") as f:
+        data = yaml.load(f) or {}
+
     for key, value in updates.items():
-        if isinstance(value, dict) and isinstance(data.get(key), dict):
-            # Shallow merge of dicts
-            data[key].update(value)
-        else:
-            data[key] = value
+        if isinstance(value, str):
+            value = DoubleQuotedScalarString(value)  # Preserve double quotes
+        data[key] = value
 
     with open(file_path, "w") as f:
-        yaml.dump(data, f, default_flow_style=False, sort_keys=False)
+        yaml.dump(data, f)
 
     print(f"✅ Updated: {file_path}", flush=True)
-
 
 
 runtime_map = {

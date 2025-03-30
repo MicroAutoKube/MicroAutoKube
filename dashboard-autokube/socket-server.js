@@ -1,13 +1,10 @@
 const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
-
 const { Server } = require('socket.io');
 
 let io = null;
-
-// Track running processes per cluster
-const runningProcesses = {}; // { [clusterId]: { py, ansible } }
+const runningProcesses = {}; // { clusterId: { py, ansible, app } }
 
 require('dotenv').config({ path: path.resolve(__dirname, '../dashboard-autokube/.env') });
 
@@ -29,7 +26,7 @@ function initializeSocket(server) {
 
   function logAndEmit(clusterId, msg) {
     const clean = msg.toString().replace(/\r?\n$/, '');
-    const logFilePath = path.resolve(__dirname, `../logs/deploy-${clusterId}.log`);
+    const logFilePath = path.join(__dirname, '..', 'logs', `deploy-${clusterId}.log`);
     fs.mkdirSync(path.dirname(logFilePath), { recursive: true });
     fs.appendFileSync(logFilePath, clean + '\n');
     io.to(clusterId).emit('log', clean);
@@ -53,17 +50,19 @@ function initializeSocket(server) {
     console.log('✅ Client connected');
 
     socket.on('request-logs', (clusterId) => {
-      const logFilePath = path.resolve(__dirname, `../logs/deploy-${clusterId}.log`);
+      const logFilePath = path.join(__dirname, '..', 'logs', `deploy-${clusterId}.log`);
       if (fs.existsSync(logFilePath)) {
         const logs = fs.readFileSync(logFilePath, 'utf8').split('\n').filter(Boolean);
         logs.forEach((line) => socket.emit('log', line));
       }
 
       socket.join(clusterId);
+      socket.data.clusterId = clusterId;
 
       const running = runningProcesses[clusterId];
       if (running?.py) socket.emit('log', '📡 Re-attached to running Python script...');
       if (running?.ansible) socket.emit('log', '📡 Re-attached to running Ansible...');
+      if (running?.app) socket.emit('log', '📡 Re-attached to running application...');
     });
 
     socket.on('run-script', (clusterId) => {
@@ -78,7 +77,9 @@ function initializeSocket(server) {
 
       const basePath = path.resolve(__dirname, '../scripts');
       const venvPath = path.join(basePath, 'venv');
-      const pythonPath = path.join(venvPath, 'bin/python3');
+      const pythonPath = fs.existsSync(path.join(venvPath, 'bin/python3'))
+        ? path.join(venvPath, 'bin/python3')
+        : path.join(venvPath, 'bin/python');
       const pipPath = path.join(venvPath, 'bin/pip3');
       const requirementsPath = path.join(basePath, 'kubespray/requirements.txt');
 
@@ -103,7 +104,6 @@ function initializeSocket(server) {
       function installDeps() {
         if (!fs.existsSync(pipPath)) {
           logAndEmit(clusterId, '⚠️ pip not found. Installing using ensurepip...');
-
           const ensure = spawn(pythonPath, ['-m', 'ensurepip']);
           attachProcessListeners(clusterId, ensure, 'ensurepip');
 
@@ -114,23 +114,10 @@ function initializeSocket(server) {
               return;
             }
 
-            logAndEmit(clusterId, '✅ pip installed. Checking path...');
-
-            if (!fs.existsSync(pipPath)) {
-              logAndEmit(clusterId, `❌ pip still missing at ${pipPath}. Aborting.`);
-              delete runningProcesses[clusterId];
-              return;
-            }
-
             const upgrade = spawn(pipPath, ['install', '--upgrade', 'pip']);
             attachProcessListeners(clusterId, upgrade, 'pip-upgrade');
 
-            upgrade.on('close', (upgradeCode) => {
-              if (upgradeCode !== 0) {
-                logAndEmit(clusterId, `⚠️ pip upgrade failed (code ${upgradeCode}), continuing...`);
-              }
-              installDeps(); // retry after upgrade
-            });
+            upgrade.on('close', () => installDeps());
           });
 
           return;
@@ -145,6 +132,7 @@ function initializeSocket(server) {
             delete runningProcesses[clusterId];
             return;
           }
+
           logAndEmit(clusterId, '📦 Dependencies installed.');
           runPython();
         });
@@ -156,10 +144,9 @@ function initializeSocket(server) {
         const python = path.join(venvPath, 'bin/python');
 
         const py = spawn(python, [pyScript, nextAuthUrl, clusterId]);
+        runningProcesses[clusterId] = { py };
 
-        runningProcesses[clusterId] = { py, ansible: null };
         attachProcessListeners(clusterId, py, 'python');
-
         logAndEmit(clusterId, `🐍 Python script started: ${python} ${pyScript}`);
 
         py.on('error', (err) => {
@@ -169,36 +156,29 @@ function initializeSocket(server) {
 
         py.on('close', (code) => {
           logAndEmit(clusterId, `🐍 Python script finished (code ${code})`);
-          logAndEmit(clusterId, `🚀 Triggering Ansible now...`);
           runAnsible();
         });
       }
 
       function runAnsible() {
         logAndEmit(clusterId, `🧰 Starting Ansible...`);
-      
+
         const ansiblePlaybookPath = path.join(venvPath, 'bin/ansible-playbook');
-        const inventoryPath = path.join('inventory', clusterId, 'hosts.yaml'); 
-        const playbookPath = 'cluster.yml'; 
+        const inventoryPath = path.join('inventory', clusterId, 'hosts.yaml');
+        const playbookPath = 'cluster.yml';
         const workingDir = path.join(basePath, 'kubespray');
-      
-        const ansible = spawn(ansiblePlaybookPath, [
-          '-i',
-          inventoryPath,
-          playbookPath,
-          '-b',
-          '-v',
-        ], {
-          cwd: workingDir, 
+
+        const ansible = spawn(ansiblePlaybookPath, ['-i', inventoryPath, playbookPath, '-b', '-v'], {
+          cwd: workingDir,
         });
-      
+
         runningProcesses[clusterId].ansible = ansible;
         attachProcessListeners(clusterId, ansible, 'ansible');
-      
+
         ansible.on('error', (err) => {
           logAndEmit(clusterId, `❌ Failed to start Ansible: ${err.message}`);
         });
-      
+
         ansible.on('close', (code) => {
           logAndEmit(clusterId, `✅ Ansible finished (code ${code})`);
           runInstallApp();
@@ -207,29 +187,23 @@ function initializeSocket(server) {
 
       function runInstallApp() {
         logAndEmit(clusterId, `🧰 Starting Install Application Script...`);
-        const pyScript = path.resolve(__dirname, '../scripts/application.py');
-        const nextAuthUrl = process.env.NEXTAUTH_URL;
+
+        const appScript = path.resolve(__dirname, '../scripts/application.py');
         const python = path.join(venvPath, 'bin/python');
+        const app = spawn(python, [appScript, process.env.NEXTAUTH_URL, clusterId]);
 
-        const app = spawn(python, [pyScript, nextAuthUrl, clusterId]);
-
-        runningProcesses[clusterId] = { app, ansible: null };
+        runningProcesses[clusterId].app = app;
         attachProcessListeners(clusterId, app, 'python');
 
-        logAndEmit(clusterId, `🐍 Python script started: ${python} ${pyScript}`);
-
         app.on('error', (err) => {
-          logAndEmit(clusterId, `❌ Failed to start Python process: ${err.message}`);
-          delete runningProcesses[clusterId];
+          logAndEmit(clusterId, `❌ Failed to start App installer: ${err.message}`);
         });
 
         app.on('close', (code) => {
-          logAndEmit(clusterId, `🐍 Python script finished (code ${code})`);
+          logAndEmit(clusterId, `🐍 Application installer finished (code ${code})`);
           delete runningProcesses[clusterId];
         });
       }
-      
-
     });
 
     socket.on('kill-script', (clusterId) => {
@@ -239,21 +213,26 @@ function initializeSocket(server) {
         return;
       }
 
-      if (processes.py) {
+      if (processes.py && !processes.py.killed) {
         processes.py.kill();
         socket.emit('log', `🛑 Python script killed`);
       }
 
-      if (processes.ansible) {
+      if (processes.ansible && !processes.ansible.killed) {
         processes.ansible.kill();
         socket.emit('log', `🛑 Ansible process killed`);
+      }
+
+      if (processes.app && !processes.app.killed) {
+        processes.app.kill();
+        socket.emit('log', `🛑 App installer killed`);
       }
 
       delete runningProcesses[clusterId];
     });
 
     socket.on('clear-logs', (clusterId) => {
-      const logFilePath = path.resolve(__dirname, `../logs/deploy-${clusterId}.log`);
+      const logFilePath = path.join(__dirname, '..', 'logs', `deploy-${clusterId}.log`);
       try {
         if (fs.existsSync(logFilePath)) {
           fs.unlinkSync(logFilePath);
@@ -267,7 +246,9 @@ function initializeSocket(server) {
     });
 
     socket.on('disconnect', () => {
-      console.log('❌ Client disconnected');
+      const cluster = socket.data?.clusterId;
+      if (cluster) console.log(`❌ Disconnected from cluster ${cluster}`);
+      else console.log('❌ Client disconnected');
     });
   });
 
