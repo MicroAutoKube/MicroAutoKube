@@ -52,6 +52,8 @@ ssh_key_dir.mkdir( exist_ok=True)
 group_vars_src = Path(__file__).resolve().parent / "kubespray" / "inventory" / "local" / "group_vars"
 group_vars_dest = inventory_dir / "group_vars"
 
+kubespray_dir = Path(__file__).resolve().parent / "kubespray"
+
 if group_vars_src.exists():
     if group_vars_dest.exists():
         shutil.rmtree(group_vars_dest)
@@ -65,6 +67,7 @@ print(f"📁 Creating inventory at: {hosts_file}", flush=True)
 # 📦 Update group_vars YAML files with cluster config
 group_vars_k8s = inventory_dir / "group_vars" / "k8s_cluster" / "k8s-cluster.yml"
 group_vars_addons = inventory_dir / "group_vars" / "k8s_cluster" / "addons.yml"
+kubespray_defaults = kubespray_dir / "roles" / "kubespray-defaults" / "defaults" / "main" / "download.yml"
 
 def update_yaml_file(file_path, updates):
     if not file_path.exists():
@@ -80,12 +83,25 @@ def update_yaml_file(file_path, updates):
         yaml.dump(data, f, default_flow_style=False)
     print(f"✅ Updated: {file_path}", flush=True)
 
-# ➕ Update kube_version in k8s-cluster.yml
-k8s_cluster_updates = {
-    "kube_version": cluster_data.get("kubernetesVersion", "1.32.0")
+
+runtime_map = {
+    "DOCKER": "docker",
+    "CONTAINERD": "containerd",
 }
 
+k8s_cluster_updates = {
+    "kube_version": cluster_data.get("kubernetesVersion", "1.32.0"),
+    "container_manager": runtime_map.get(cluster_data.get("containerRuntime", "CONTAINERD"), "containerd")
+}
+
+download_updates = {
+    "containerd_version": cluster_data.get("containerVersion", "{{ (containerd_archive_checksums['amd64'] | dict2items)[0].key }}"),
+    "cri_dockerd_version": cluster_data.get("containerVersion", "{{ (cri_dockerd_archive_checksums['amd64'] | dict2items)[0].key }}")
+}
+
+
 update_yaml_file(group_vars_k8s, k8s_cluster_updates)
+update_yaml_file(kubespray_defaults, download_updates)
 
 # ➕ Update addons in addons.yml
 cluster_config = cluster_data.get("clusterConfig", {})
