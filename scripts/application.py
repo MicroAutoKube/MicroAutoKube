@@ -74,13 +74,19 @@ elif auth_type == "SSH_KEY":
     ssh_cmd = ["ssh", "-i", str(key_path), "-o", "StrictHostKeyChecking=no", f"{user}@{ip}"]
 
 # Helm command to install KubeSphere
-helm_cmd = (
+helm_setup_and_install = (
+    "mkdir -p $HOME/.kube && "
+    "sudo cp -f /etc/kubernetes/admin.conf $HOME/.kube/config && "
+    "sudo chown $(id -u):$(id -g) $HOME/.kube/config && "
+    "sudo chown $(id -u):$(id -g) /etc/kubernetes/admin.conf && "
+    "KUBECONFIG=$HOME/.kube/config "
     "helm upgrade --install -n kubesphere-system "
     "--create-namespace ks-core https://charts.kubesphere.io/main/ks-core-1.1.4.tgz "
     "--debug --wait"
 )
 
-full_cmd = ssh_cmd + [helm_cmd]
+
+full_cmd = ssh_cmd + [helm_setup_and_install]
 print(f"🚀 Running KubeSphere install on {ip}...", flush=True)
 
 try:

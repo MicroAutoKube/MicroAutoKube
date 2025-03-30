@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ClusterProfileWithNodes } from "@/types/cluster";
 
@@ -9,18 +9,34 @@ interface ProfileProps {
 
 const Profile: React.FC<ProfileProps> = ({ cluster }) => {
   const router = useRouter();
+  const [status, setStatus] = useState("Pending");
 
   const handleClick = () => {
     router.push(`/dashboard/profile/${cluster.id}`);
   };
 
   const masterNodes = cluster.nodes.filter((node) => node.role === "MASTER");
-  const ips =
-    masterNodes.length > 0
-      ? masterNodes.map((node) => `${node.ipAddress}:6443`).join(", ")
-      : "N/A";
+  const firstMasterIp = masterNodes[0]?.ipAddress;
+  const ips = masterNodes.length
+    ? masterNodes.map((node) => `${node.ipAddress}:6443`).join(", ")
+    : "N/A";
 
-  const status = "Pending";
+  useEffect(() => {
+    if (!firstMasterIp) return;
+
+    // Try to fetch Kubernetes API root
+    fetch(`https://${firstMasterIp}:6443`, { method: "GET" })
+      .then((res) => {
+        if (res.ok) {
+          setStatus("Running");
+        } else {
+          setStatus("Pending");
+        }
+      })
+      .catch(() => {
+        setStatus("Pending");
+      });
+  }, [firstMasterIp]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
