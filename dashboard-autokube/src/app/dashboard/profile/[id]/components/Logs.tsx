@@ -9,7 +9,7 @@ export default function TerminalLog({ id: clusterId }: { id: string }) {
     const terminalRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        const s = io({ path: "/api/socket" });
+        const s = io({ path: "/api/socket" , secure: location.protocol === "https:" });
         setSocket(s);
 
         s.on("log", (msg: string) => {
