@@ -16,10 +16,14 @@ function initializeSocket(server) {
   io = new Server(server, {
     path: "/api/socket",
     cors: {
-      origin: [process.env.NEXTAUTH_URL , process.env.SERVER_IP],
+      origin: [
+        process.env.NEXTAUTH_URL, // http://localhost:3000
+        `http://${process.env.SERVER_IP}:3000`, // http://127.0.0.1:3000
+      ],
       methods: ["GET", "POST"],
     },
   });
+  
 
   function logAndEmit(clusterId, msg) {
     const clean = msg.toString().replace(/\r?\n$/, "");
