@@ -16,10 +16,12 @@ function initializeSocket(server) {
 
   io = new Server(server, {
     path: "/api/socket",
-    cors: { origin: "*" },
-    transports: ["websocket"],
-    secure: location.protocol === "https:",
+    cors: {
+      origin: process.env.NEXTAUTH_URL,
+      methods: ["GET","POST"]
+    }
   });
+  
 
   function logAndEmit(clusterId, msg) {
     const clean = msg.toString().replace(/\r?\n$/, "");
