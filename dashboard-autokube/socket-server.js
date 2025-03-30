@@ -17,9 +17,10 @@ function initializeSocket(server) {
     path: "/api/socket",
     cors: {
       origin: [
-        process.env.NEXTAUTH_URL, // http://localhost:3000
-        `http://${process.env.SERVER_IP}:3000`, // http://127.0.0.1:3000
-        "http://localhost:3000",  // fallback
+        process.env.NEXTAUTH_URL, 
+        `http://${process.env.SERVER_IP}`,
+        "http://localhost",  
+        "http://localhost:3000"
       ],
       methods: ["GET", "POST"],
     },

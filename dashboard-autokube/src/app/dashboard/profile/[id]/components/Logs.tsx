@@ -9,7 +9,7 @@ export default function TerminalLog({ id: clusterId }: { id: string }) {
     const terminalRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        const s = io(process.env.NEXTAUTH_URL || window.location.origin, {
+        const s = io({
             path: "/api/socket",
             transports: ["websocket"],
             forceNew: true,
