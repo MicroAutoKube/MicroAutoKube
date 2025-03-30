@@ -74,7 +74,7 @@ INTERNAL_API_TOKEN=$(openssl rand -hex 32)
 # ─────────────────────────────────────────────
 echo -e "${BOLD}${BLUE}📍 STEP 1: Installing System Dependencies...${NC}"
 sudo apt update && sudo apt upgrade -y
-sudo apt install -y curl unzip postgresql postgresql-contrib nginx certbot python3-certbot-nginx openssl git build-essential python3.12 python3.12-venv
+sudo apt install -y curl unzip postgresql postgresql-contrib nginx certbot python3-certbot-nginx openssl git build-essential python3.12 python3.12-venv python3-pip
 fail_if_error "System package installation failed"
 
 # ─────────────────────────────────────────────
