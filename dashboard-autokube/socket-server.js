@@ -16,10 +16,31 @@ function initializeSocket(server) {
     cors: { origin: "*" },
   });
 
+  function logAndEmit(clusterId, msg) {
+    const clean = msg.toString().replace(/\r?\n$/, "");
+    const logFilePath = path.resolve(__dirname, `../logs/deploy-${clusterId}.log`);
+    fs.mkdirSync(path.dirname(logFilePath), { recursive: true });
+    fs.appendFileSync(logFilePath, clean + "\n");
+    io.to(clusterId).emit("log", clean);
+  }
+
+  function attachProcessListeners(clusterId, proc, prefix) {
+    if (proc.__listenersAttached) return;
+
+    proc.stdout.on("data", (data) => {
+      logAndEmit(clusterId, `[${prefix}] ${data}`);
+    });
+
+    proc.stderr.on("data", (data) => {
+      logAndEmit(clusterId, `[${prefix} stderr] ${data}`);
+    });
+
+    proc.__listenersAttached = true;
+  }
+
   io.on("connection", (socket) => {
     console.log("✅ Client connected");
 
-    // Join socket room based on cluster
     socket.on("request-logs", (clusterId) => {
       const logFilePath = path.resolve(__dirname, `../logs/deploy-${clusterId}.log`);
       if (fs.existsSync(logFilePath)) {
@@ -27,83 +48,60 @@ function initializeSocket(server) {
         logs.forEach((line) => socket.emit("log", line));
       }
 
-      socket.join(clusterId); // Join room to receive real-time logs
+      socket.join(clusterId);
 
-      // If process is running, reattach logs
       const running = runningProcesses[clusterId];
       if (running?.py) {
         socket.emit("log", "📡 Re-attached to running Python script...");
-        running.py.stdout.on("data", (data) => {
-          io.to(clusterId).emit("log", `[python] ${data.toString()}`);
-        });
-        running.py.stderr.on("data", (data) => {
-          io.to(clusterId).emit("log", `[python stderr] ${data.toString()}`);
-        });
       }
-
       if (running?.ansible) {
         socket.emit("log", "📡 Re-attached to running Ansible...");
-        running.ansible.stdout.on("data", (data) => {
-          io.to(clusterId).emit("log", `[ansible] ${data.toString()}`);
-        });
-        running.ansible.stderr.on("data", (data) => {
-          io.to(clusterId).emit("log", `[ansible stderr] ${data.toString()}`);
-        });
       }
     });
 
-    // When run-script is triggered
     socket.on("run-script", (clusterId) => {
       if (!clusterId) return;
 
-      const logFilePath = path.resolve(__dirname, `../logs/deploy-${clusterId}.log`);
-      const logAndEmit = (msg) => {
-        const clean = msg.toString().replace(/\r?\n$/, "");
-        fs.mkdirSync(path.dirname(logFilePath), { recursive: true });
-        fs.appendFileSync(logFilePath, clean + "\n");
-        io.to(clusterId).emit("log", clean);
-      };
+      // Prevent duplicate runs for the same cluster
+      if (runningProcesses[clusterId]) {
+        socket.emit("log", `⚠️ Deployment already running for cluster ${clusterId}`);
+        return;
+      }
 
-      logAndEmit("📦 Starting deployment...");
+      logAndEmit(clusterId, "📦 Starting deployment...");
 
       const basePath = path.resolve(__dirname, "../scripts/kubespray");
       const venvPath = path.join(basePath, "venv");
       const requirementsPath = path.join(basePath, "requirements.txt");
 
-      const emit = (prefix) => (data) => logAndEmit(`[${prefix}] ${data}`);
-
       if (!fs.existsSync(venvPath)) {
-        logAndEmit("📦 Creating virtual environment...");
+        logAndEmit(clusterId, "📦 Creating virtual environment...");
 
         const venv = spawn("python3", ["-m", "venv", venvPath]);
-
-        venv.stdout.on("data", emit("venv"));
-        venv.stderr.on("data", emit("venv stderr"));
+        attachProcessListeners(clusterId, venv, "venv");
 
         venv.on("close", (code) => {
           if (code !== 0) {
-            logAndEmit(`❌ Failed to create venv (code ${code})`);
+            logAndEmit(clusterId, `❌ Failed to create venv (code ${code})`);
             return;
           }
           installDeps();
         });
       } else {
-        logAndEmit("✅ Virtual environment exists.");
+        logAndEmit(clusterId, "✅ Virtual environment exists.");
         installDeps();
       }
 
       function installDeps() {
         const pip = spawn(path.join(venvPath, "bin/pip"), ["install", "-r", requirementsPath]);
-
-        pip.stdout.on("data", emit("pip"));
-        pip.stderr.on("data", emit("pip stderr"));
+        attachProcessListeners(clusterId, pip, "pip");
 
         pip.on("close", (code) => {
           if (code !== 0) {
-            logAndEmit(`❌ Pip install failed (code ${code})`);
+            logAndEmit(clusterId, `❌ Pip install failed (code ${code})`);
             return;
           }
-          logAndEmit("📦 Dependencies installed.");
+          logAndEmit(clusterId, "📦 Dependencies installed.");
           runPython();
         });
       }
@@ -113,12 +111,10 @@ function initializeSocket(server) {
         const py = spawn("python3", [pyScript]);
 
         runningProcesses[clusterId] = { py, ansible: null };
-
-        py.stdout.on("data", emit("python"));
-        py.stderr.on("data", emit("python stderr"));
+        attachProcessListeners(clusterId, py, "python");
 
         py.on("close", (code) => {
-          logAndEmit(`🐍 Python script finished (code ${code})`);
+          logAndEmit(clusterId, `🐍 Python script finished (code ${code})`);
           runAnsible();
         });
       }
@@ -133,37 +129,32 @@ function initializeSocket(server) {
         ]);
 
         runningProcesses[clusterId].ansible = ansible;
-
-        ansible.stdout.on("data", emit("ansible"));
-        ansible.stderr.on("data", emit("ansible stderr"));
+        attachProcessListeners(clusterId, ansible, "ansible");
 
         ansible.on("close", (code) => {
-          logAndEmit(`✅ Ansible finished (code ${code})`);
-          delete runningProcesses[clusterId]; // Cleanup
+          logAndEmit(clusterId, `✅ Ansible finished (code ${code})`);
+          delete runningProcesses[clusterId];
         });
       }
     });
 
-    socket.on("disconnect", () => {
-      console.log("❌ Client disconnected");
-    });
     socket.on("kill-script", (clusterId) => {
       const processes = runningProcesses[clusterId];
       if (!processes) {
         socket.emit("log", `⚠️ No running script for cluster ${clusterId}`);
         return;
       }
-    
+
       if (processes.py) {
         processes.py.kill();
         socket.emit("log", `🛑 Python script killed`);
       }
-    
+
       if (processes.ansible) {
         processes.ansible.kill();
         socket.emit("log", `🛑 Ansible process killed`);
       }
-    
+
       delete runningProcesses[clusterId];
     });
 
@@ -180,8 +171,10 @@ function initializeSocket(server) {
         socket.emit("log", `❌ Failed to clear logs: ${err.message}`);
       }
     });
-    
-    
+
+    socket.on("disconnect", () => {
+      console.log("❌ Client disconnected");
+    });
   });
 
   return io;
