@@ -16,12 +16,7 @@ function initializeSocket(server) {
   io = new Server(server, {
     path: '/api/socket',
     cors: {
-      origin: [
-        process.env.NEXTAUTH_URL,
-        `http://${process.env.SERVER_IP}`,
-        'http://localhost',
-        'http://localhost:3000',
-      ],
+      origin: '*',
       methods: ['GET', 'POST'],
     },
   });
