@@ -4,10 +4,10 @@ import { ClusterPayload } from "@/types/cluster";
 import { clusterSchema } from "@/utils/clusterSchema";
 import { Dialog, Transition } from "@headlessui/react";
 import { useState, Fragment } from "react";
-import { FaPlus, FaTimes, FaExclamationCircle, FaTrash } from "react-icons/fa";
+import {  FaTimes, FaExclamationCircle, FaTrash } from "react-icons/fa";
 import { toast } from "react-toastify";
 import Dropzone from "../common/Dropzone";
-import {crypto } from '@/lib/client'
+import {uuidv4 } from '@/lib/client'
 
 interface ClusterModalProps {
   isOpen: boolean;
@@ -30,7 +30,7 @@ const ClusterModal = ({ isOpen, setIsOpen, createCluster }: ClusterModalProps) =
 
   const [nodes, setNodes] = useState([
     {
-      id: crypto.randomUUID(),
+      id: uuidv4(),
       hostname: "",
       ipAddress: "",
       role: "MASTER",
@@ -45,7 +45,7 @@ const ClusterModal = ({ isOpen, setIsOpen, createCluster }: ClusterModalProps) =
     setNodes((prev) => [
       ...prev,
       {
-        id: crypto.randomUUID(),
+        id: uuidv4(),
         hostname: "",
         ipAddress: "",
         role: "WORKER",
@@ -117,7 +117,7 @@ const ClusterModal = ({ isOpen, setIsOpen, createCluster }: ClusterModalProps) =
     setGlobalSSHKey(null);
     setNodes([
       {
-        id: crypto.randomUUID(),
+        id: uuidv4(),
         hostname: "",
         ipAddress: "",
         role: "MASTER",
