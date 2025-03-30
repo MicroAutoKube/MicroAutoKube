@@ -21,22 +21,24 @@ const Profile: React.FC<ProfileProps> = ({ cluster }) => {
     ? masterNodes.map((node) => `${node.ipAddress}:6443`).join(", ")
     : "N/A";
 
-  useEffect(() => {
-    if (!firstMasterIp) return;
-
-    // Try to fetch Kubernetes API root
-    fetch(`https://${firstMasterIp}:6443`, { method: "GET" })
-      .then((res) => {
-        if (res.ok) {
-          setStatus("Running");
-        } else {
+    useEffect(() => {
+      if (!firstMasterIp) return;
+    
+      fetch(`/api/ping-kube?ip=${firstMasterIp}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.reachable) {
+            setStatus("Running");
+          } else {
+            setStatus("Pending");
+          }
+        })
+        .catch(() => {
           setStatus("Pending");
-        }
-      })
-      .catch(() => {
-        setStatus("Pending");
-      });
-  }, [firstMasterIp]);
+        });
+    }, [firstMasterIp]);
+    
+    
 
   const getStatusColor = (status: string) => {
     switch (status) {
