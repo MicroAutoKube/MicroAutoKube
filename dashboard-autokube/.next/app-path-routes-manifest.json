@@ -1,0 +1,15 @@
+{
+  "/_not-found/page": "/_not-found",
+  "/api/auth/[...nextauth]/route": "/api/auth/[...nextauth]",
+  "/api/auth/signup/route": "/api/auth/signup",
+  "/api/clusters/app/[clusterId]/route": "/api/clusters/app/[clusterId]",
+  "/api/clusters/config/[clusterId]/route": "/api/clusters/config/[clusterId]",
+  "/api/clusters/route": "/api/clusters",
+  "/api/ping-app/route": "/api/ping-app",
+  "/api/ping-kube/route": "/api/ping-kube",
+  "/favicon.ico/route": "/favicon.ico",
+  "/auth/login/page": "/auth/login",
+  "/page": "/",
+  "/dashboard/page": "/dashboard",
+  "/dashboard/profile/[id]/page": "/dashboard/profile/[id]"
+}

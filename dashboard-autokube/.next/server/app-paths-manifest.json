@@ -1,0 +1,15 @@
+{
+  "/_not-found/page": "app/_not-found/page.js",
+  "/api/auth/[...nextauth]/route": "app/api/auth/[...nextauth]/route.js",
+  "/api/auth/signup/route": "app/api/auth/signup/route.js",
+  "/api/clusters/app/[clusterId]/route": "app/api/clusters/app/[clusterId]/route.js",
+  "/api/clusters/config/[clusterId]/route": "app/api/clusters/config/[clusterId]/route.js",
+  "/api/clusters/route": "app/api/clusters/route.js",
+  "/api/ping-app/route": "app/api/ping-app/route.js",
+  "/api/ping-kube/route": "app/api/ping-kube/route.js",
+  "/favicon.ico/route": "app/favicon.ico/route.js",
+  "/auth/login/page": "app/auth/login/page.js",
+  "/page": "app/page.js",
+  "/dashboard/page": "app/dashboard/page.js",
+  "/dashboard/profile/[id]/page": "app/dashboard/profile/[id]/page.js"
+}
