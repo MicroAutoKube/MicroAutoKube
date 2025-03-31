@@ -37,8 +37,8 @@ model ClusterProfile {
 
 model Node {
   id        String   @id @default(cuid())
-  hostname  String   @unique
-  ipAddress String   @unique
+  hostname  String   
+  ipAddress String   
   authType  AuthType
   username  String
   password  String? // Required if authType = PASSWORD
