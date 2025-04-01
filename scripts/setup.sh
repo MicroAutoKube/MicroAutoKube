@@ -214,30 +214,28 @@ done
 # echo -e "${BOLD}${BLUE}📍 STEP 9: Building the Project...${NC}"
 # sudo -u $APP_USER bash -c "cd $APP_DIR/dashboard-autokube && $PKG_MANAGER run build"
 # fail_if_error "Build failed"
-
 # ─────────────────────────────────────────────
 # 🔧 systemd Service
 # ─────────────────────────────────────────────
 echo -e "${BOLD}${BLUE}📍 STEP 10: Creating systemd Service...${NC}"
 SERVICE_FILE="/etc/systemd/system/$APP_NAME.service"
-if [[ "$PKG_MANAGER" == "npm" ]]; then
-    EXEC_START="$NVM_DIR/versions/node/v22.14.0/.nvm/versions/node/v22.14.0/bin/npm start"
-elif [[ "$PKG_MANAGER" == "pnpm" ]]; then
-    EXEC_START="$NVM_DIR/versions/node/v22.14.0/.nvm/versions/node/v22.14.0/bin/pnpm start"
-else
-    EXEC_START="$BUN_PATH run start"
-fi
-echo -e "${BOLD}${BLUE}📍 STEP 10: Creating systemd Service...${NC}"
-SERVICE_FILE="/etc/systemd/system/$APP_NAME.service"
+START_SCRIPT="/home/$APP_USER/start-$APP_NAME.sh"
 
-if [[ "$PKG_MANAGER" == "npm" ]]; then
-    EXEC_START="/home/$APP_USER/.nvm/versions/node/v22.14.0/bin/npm start"
-elif [[ "$PKG_MANAGER" == "pnpm" ]]; then
-    EXEC_START="/home/$APP_USER/.nvm/versions/node/v22.14.0/bin/pnpm start"
-else
-    EXEC_START="$BUN_PATH run start"
-fi
+# Create wrapper script to load NVM & run the app
+sudo bash -c "cat > $START_SCRIPT" <<EOF
+#!/bin/bash
+export NVM_DIR="/home/$APP_USER/.nvm"
+source "\$NVM_DIR/nvm.sh"
+cd "$APP_DIR/dashboard-autokube"
+nvm use 22
+$PKG_MANAGER start
+EOF
 
+# Make the wrapper executable by the app user
+sudo chmod +x $START_SCRIPT
+sudo chown $APP_USER:$APP_USER $START_SCRIPT
+
+# Create systemd service file
 sudo bash -c "cat > $SERVICE_FILE" <<EOF
 [Unit]
 Description=$APP_NAME service
@@ -246,7 +244,7 @@ After=network.target
 [Service]
 User=$APP_USER
 WorkingDirectory=$APP_DIR/dashboard-autokube
-ExecStart=$EXEC_START
+ExecStart=$START_SCRIPT
 Restart=always
 Environment=NODE_ENV=production
 Environment=PORT=3000
@@ -256,11 +254,12 @@ Environment=HOSTNAME=0.0.0.0
 WantedBy=multi-user.target
 EOF
 
-
 sudo systemctl daemon-reload
 sudo systemctl enable $APP_NAME
 sudo systemctl restart $APP_NAME
+sudo systemctl status $APP_NAME
 fail_if_error "Service failed to start"
+
 
 # ─────────────────────────────────────────────
 # 🌐 Nginx
