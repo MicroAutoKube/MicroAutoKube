@@ -221,9 +221,9 @@ done
 echo -e "${BOLD}${BLUE}📍 STEP 10: Creating systemd Service...${NC}"
 SERVICE_FILE="/etc/systemd/system/$APP_NAME.service"
 if [[ "$PKG_MANAGER" == "npm" ]]; then
-    EXEC_START="npm start"
+    EXEC_START="$NVM_DIR/versions/node/v22.14.0/.nvm/versions/node/v22.14.0/bin/npm start"
 elif [[ "$PKG_MANAGER" == "pnpm" ]]; then
-    EXEC_START="pnpm start"
+    EXEC_START="$NVM_DIR/versions/node/v22.14.0/.nvm/versions/node/v22.14.0/bin/pnpm start"
 else
     EXEC_START="$BUN_PATH run start"
 fi
@@ -244,6 +244,23 @@ Environment=HOSTNAME=0.0.0.0
 
 [Install]
 WantedBy=multi-user.target
+
+[Unit]
+Description=autokube service
+After=network.target
+
+[Service]
+User=$APP_USER
+WorkingDirectory=$APP_DIR/dashboard-autokube
+ExecStart=/home/tester/.nvm/versions/node/v22.14.0/bin/npm start
+Restart=always
+Environment=NODE_ENV=production
+Environment=PORT=3000
+Environment=HOSTNAME=0.0.0.0
+
+[Install]
+WantedBy=multi-user.target
+
 EOF
 
 sudo systemctl daemon-reload
