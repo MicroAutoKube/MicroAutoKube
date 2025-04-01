@@ -60,7 +60,7 @@ fi
 # ─────────────────────────────────────────────
 # 🔐 Secrets & Paths
 # ─────────────────────────────────────────────
-APP_DIR="/opt/$APP_NAME"
+APP_DIR="$HOME/autokube"
 BUN_INSTALL_DIR="/home/$APP_USER/.bun"
 BUN_PATH="$BUN_INSTALL_DIR/bin/bun"
 SERVER_IP=$(hostname -I | awk '{print $1}')
