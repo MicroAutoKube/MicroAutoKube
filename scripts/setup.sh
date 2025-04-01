@@ -195,8 +195,14 @@ else
 fi
 
 for i in {1..5}; do
-    sudo -u $APP_USER bash -c "cd $APP_DIR/dashboard-autokube && $PRISMA_CMD" && break
-    echo -e "${RED}⚠️  Prisma migration failed. Retrying...${NC}"
+    sudo -u $APP_USER bash -c "
+        export NVM_DIR=\"\$HOME/.nvm\"
+        . \"\$NVM_DIR/nvm.sh\"
+        nvm use 22
+        cd $APP_DIR/dashboard-autokube
+        $PRISMA_CMD
+    " && break
+    echo -e \"${RED}⚠️  Prisma migration failed. Retrying...${NC}\"
     sleep 5
 done
 
